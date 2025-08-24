@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Menu, X, User, Crown, Zap } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,13 +43,17 @@ const Navigation = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="outline" className="rounded-full border-primary/20 hover:border-primary/40">
-              <User className="w-4 h-4 ml-2" />
-              تسجيل الدخول
+            <Button variant="outline" className="rounded-full border-primary/20 hover:border-primary/40" asChild>
+              <Link to="/login">
+                <User className="w-4 h-4 ml-2" />
+                تسجيل الدخول
+              </Link>
             </Button>
-            <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <Zap className="w-4 h-4 ml-2" />
-              ابدأ مجاناً
+            <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105" asChild>
+              <Link to="/login">
+                <Zap className="w-4 h-4 ml-2" />
+                ابدأ مجاناً
+              </Link>
             </Button>
           </div>
 
@@ -82,13 +87,17 @@ const Navigation = () => {
                 </a>
               ))}
               <div className="pt-4 border-t border-gray-200 space-y-3">
-                <Button variant="outline" className="w-full rounded-full border-primary/20 hover:border-primary/40">
-                  <User className="w-4 h-4 ml-2" />
-                  تسجيل الدخول
+                <Button variant="outline" className="w-full rounded-full border-primary/20 hover:border-primary/40" asChild>
+                  <Link to="/login">
+                    <User className="w-4 h-4 ml-2" />
+                    تسجيل الدخول
+                  </Link>
                 </Button>
-                <Button className="w-full bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-full shadow-lg">
-                  <Zap className="w-4 h-4 ml-2" />
-                  ابدأ مجاناً
+                <Button className="w-full bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-full shadow-lg" asChild>
+                  <Link to="/login">
+                    <Zap className="w-4 h-4 ml-2" />
+                    ابدأ مجاناً
+                  </Link>
                 </Button>
               </div>
             </div>

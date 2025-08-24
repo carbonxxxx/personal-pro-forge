@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Sparkles, Users, TrendingUp } from "lucide-react";
 import heroImage from "@/assets/hero-bg.jpg";
+import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
@@ -64,14 +65,15 @@ const HeroSection = () => {
           </div>
         </div>
 
-        {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Button size="lg" className="bg-gradient-to-r from-primary to-primary-glow hover:from-primary-glow hover:to-primary text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 animate-glow">
-            ابدأ مجاناً الآن
-            <ArrowLeft className="mr-2 h-5 w-5 rtl:rotate-180" />
+          <Button size="lg" className="bg-gradient-to-r from-primary to-primary-glow hover:from-primary-glow hover:to-primary text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 animate-glow" asChild>
+            <Link to="/login">
+              ابدأ مجاناً الآن
+              <ArrowLeft className="mr-2 h-5 w-5 rtl:rotate-180" />
+            </Link>
           </Button>
           
-          <Button variant="outline" size="lg" className="text-lg px-8 py-6 rounded-xl border-2 border-primary/20 hover:border-primary/40 bg-white/80 backdrop-blur-sm hover:bg-white transition-all duration-300 hover:scale-105">
+          <Button variant="outline" size="lg" className="text-lg px-8 py-6 rounded-xl border-2 border-white/40 hover:border-white/60 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white hover:text-white transition-all duration-300 hover:scale-105">
             شاهد العروض التوضيحية
           </Button>
         </div>
