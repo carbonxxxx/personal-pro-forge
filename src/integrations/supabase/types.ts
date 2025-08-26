@@ -14,16 +14,250 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      payment_settings: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          created_at: string
+          id: string
+          instructions: string | null
+          is_active: boolean | null
+          max_amount: number | null
+          min_amount: number
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          created_at?: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          max_amount?: number | null
+          min_amount: number
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          created_at?: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+          max_amount?: number | null
+          min_amount?: number
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          phone: string | null
+          referral_code: string
+          referral_count: number | null
+          referred_by: string | null
+          total_earnings: number | null
+          updated_at: string
+          user_id: string
+          username: string | null
+          wallet_balance: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          phone?: string | null
+          referral_code: string
+          referral_count?: number | null
+          referred_by?: string | null
+          total_earnings?: number | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+          wallet_balance?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          phone?: string | null
+          referral_code?: string
+          referral_count?: number | null
+          referred_by?: string | null
+          total_earnings?: number | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+          wallet_balance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      referral_earnings: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          level: number
+          percentage: number
+          referred_id: string
+          referrer_id: string
+          source_transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          level: number
+          percentage: number
+          referred_id: string
+          referrer_id: string
+          source_transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          level?: number
+          percentage?: number
+          referred_id?: string
+          referrer_id?: string
+          source_transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_earnings_source_transaction_id_fkey"
+            columns: ["source_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          admin_notes: string | null
+          amount: number
+          created_at: string
+          currency: string | null
+          id: string
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          processed_at: string | null
+          processed_by: string | null
+          receipt_image_url: string | null
+          reference_number: string | null
+          status: Database["public"]["Enums"]["transaction_status"] | null
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount: number
+          created_at?: string
+          currency?: string | null
+          id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          processed_at?: string | null
+          processed_by?: string | null
+          receipt_image_url?: string | null
+          reference_number?: string | null
+          status?: Database["public"]["Enums"]["transaction_status"] | null
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number
+          created_at?: string
+          currency?: string | null
+          id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          processed_at?: string | null
+          processed_by?: string | null
+          receipt_image_url?: string | null
+          reference_number?: string | null
+          status?: Database["public"]["Enums"]["transaction_status"] | null
+          transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_referral_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      process_referral_earnings: {
+        Args: { amount: number; transaction_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      payment_method: "libyana" | "madar" | "bank" | "binance" | "cash"
+      transaction_status: "pending" | "approved" | "rejected" | "completed"
+      transaction_type:
+        | "deposit"
+        | "withdrawal"
+        | "referral_bonus"
+        | "commission"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +384,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      payment_method: ["libyana", "madar", "bank", "binance", "cash"],
+      transaction_status: ["pending", "approved", "rejected", "completed"],
+      transaction_type: [
+        "deposit",
+        "withdrawal",
+        "referral_bonus",
+        "commission",
+      ],
+    },
   },
 } as const
