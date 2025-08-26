@@ -16,32 +16,44 @@ import {
   BarChart3,
   ExternalLink,
   Copy,
-  Star
+  Star,
+  LogOut,
+  Wallet,
+  Download,
+  Upload
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const { user, signOut } = useAuth();
+  const { profile, transactions, referralEarnings, stats, loading } = useProfile();
 
-  // Mock data
-  const user = {
-    name: "أحمد محمد",
-    email: "ahmed@example.com",
-    plan: "premium",
-    joinDate: "2024-01-15"
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground arabic-body">جاري التحميل...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const stats = {
-    totalProfiles: 3,
-    totalViews: 1250,
-    totalEarnings: 125.50,
-    totalReferrals: 8,
-    thisMonth: {
-      views: 320,
-      earnings: 45.20,
-      referrals: 3
-    }
-  };
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4 arabic-heading">يرجى تسجيل الدخول</h1>
+          <Link to="/login">
+            <Button>تسجيل الدخول</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const profiles = [
     {
@@ -119,14 +131,18 @@ const Dashboard = () => {
             {/* User Info */}
             <div className="flex items-center gap-4">
               <div className="text-right hidden md:block">
-                <div className="font-medium arabic-heading">{user.name}</div>
+                <div className="font-medium arabic-heading">{profile?.display_name || user.email?.split('@')[0]}</div>
                 <div className="text-sm text-muted-foreground arabic-body flex items-center gap-2">
-                  {getPlanBadge(user.plan)}
+                  {getPlanBadge("free")}
+                  <span className="text-success">{profile?.wallet_balance?.toFixed(2) || "0.00"} د.ل</span>
                 </div>
               </div>
               <div className="w-10 h-10 bg-gradient-to-r from-primary to-premium rounded-full flex items-center justify-center text-white font-bold">
-                أ
+                {(profile?.display_name || user.email || "").charAt(0).toUpperCase()}
               </div>
+              <Button variant="outline" size="sm" onClick={signOut}>
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -166,14 +182,25 @@ const Dashboard = () => {
               <>
                 {/* Welcome */}
                 <div className="bg-gradient-to-r from-primary/10 to-premium/10 rounded-2xl p-8 border border-primary/20">
-                  <h1 className="text-3xl font-bold mb-4 arabic-heading">مرحباً، {user.name}!</h1>
+                  <h1 className="text-3xl font-bold mb-4 arabic-heading">مرحباً، {profile?.display_name || user.email?.split('@')[0]}!</h1>
                   <p className="text-muted-foreground arabic-body mb-6">
                     إليك نظرة عامة على أداء ملفاتك الشخصية وأرباحك
                   </p>
-                  <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                    <Plus className="w-5 h-5 ml-2" />
-                    إنشاء ملف جديد
-                  </Button>
+                  <div className="flex gap-4">
+                    <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                      <Plus className="w-5 h-5 ml-2" />
+                      إنشاء ملف جديد
+                    </Button>
+                    {profile && (
+                      <div className="flex items-center gap-2 px-4 py-2 bg-white/80 rounded-xl border">
+                        <span className="text-sm text-muted-foreground arabic-body">كود الإحالة:</span>
+                        <code className="font-mono text-sm bg-primary/10 px-2 py-1 rounded">{profile.referral_code}</code>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Stats Cards */}
@@ -464,22 +491,22 @@ const Dashboard = () => {
                   <h3 className="text-lg font-bold mb-6 arabic-heading">المعلومات الشخصية</h3>
                   <div className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2 arabic-body">الاسم الكامل</label>
-                        <input 
-                          type="text" 
-                          value={user.name}
-                          className="w-full p-3 rounded-xl border border-gray-200 focus:border-primary/40 focus:ring-primary/20"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2 arabic-body">البريد الإلكتروني</label>
-                        <input 
-                          type="email" 
-                          value={user.email}
-                          className="w-full p-3 rounded-xl border border-gray-200 focus:border-primary/40 focus:ring-primary/20"
-                        />
-                      </div>
+                       <div>
+                         <label className="block text-sm font-medium mb-2 arabic-body">الاسم الكامل</label>
+                         <input 
+                           type="text" 
+                           value={profile?.display_name || ""}
+                           className="w-full p-3 rounded-xl border border-gray-200 focus:border-primary/40 focus:ring-primary/20"
+                         />
+                       </div>
+                       <div>
+                         <label className="block text-sm font-medium mb-2 arabic-body">البريد الإلكتروني</label>
+                         <input 
+                           type="email" 
+                           value={user.email || ""}
+                           className="w-full p-3 rounded-xl border border-gray-200 focus:border-primary/40 focus:ring-primary/20"
+                         />
+                       </div>
                     </div>
                     <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl">
                       حفظ التغييرات
@@ -494,7 +521,7 @@ const Dashboard = () => {
                     <div>
                       <div className="flex items-center gap-3 mb-2">
                         <span className="font-bold arabic-heading">الخطة الحالية:</span>
-                        {getPlanBadge(user.plan)}
+                        {getPlanBadge("free")}
                       </div>
                       <p className="text-sm text-muted-foreground arabic-body">
                         تجديد تلقائي في 15 أبريل 2024

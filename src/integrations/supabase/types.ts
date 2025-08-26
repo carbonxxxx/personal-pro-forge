@@ -248,6 +248,10 @@ export type Database = {
         Args: { amount: number; transaction_id: string }
         Returns: undefined
       }
+      promote_admin_by_email: {
+        Args: { email_input: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"

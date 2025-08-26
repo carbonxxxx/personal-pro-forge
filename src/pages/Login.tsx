@@ -1,25 +1,79 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Crown, Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Crown, Eye, EyeOff, Mail, Lock, ArrowLeft, Users } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     confirmPassword: "",
-    name: ""
+    name: "",
+    referralCode: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { signIn, signUp, user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    // Get referral code from URL if present
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setFormData(prev => ({ ...prev, referralCode: refCode }));
+      setIsLogin(false); // Switch to signup if referred
+    }
+
+    // Redirect if already logged in
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate, searchParams]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login/register logic here
-    console.log("Form submitted:", formData);
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        await signIn(formData.email, formData.password);
+      } else {
+        // Validation for signup
+        if (formData.password !== formData.confirmPassword) {
+          toast({
+            title: "خطأ في كلمة المرور",
+            description: "كلمات المرور غير متطابقة",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (formData.password.length < 6) {
+          toast({
+            title: "كلمة المرور ضعيفة",
+            description: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        await signUp(formData.email, formData.password, formData.name, formData.referralCode);
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,22 +197,45 @@ const Login = () => {
           </div>
 
           {!isLogin && (
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="arabic-body font-medium">تأكيد كلمة المرور</Label>
-              <div className="relative">
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="أعد إدخال كلمة المرور"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="rounded-xl border-gray-200 focus:border-primary/40 focus:ring-primary/20 h-12 pr-12"
-                  required={!isLogin}
-                />
-                <Lock className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="arabic-body font-medium">تأكيد كلمة المرور</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="أعد إدخال كلمة المرور"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="rounded-xl border-gray-200 focus:border-primary/40 focus:ring-primary/20 h-12 pr-12"
+                    required={!isLogin}
+                  />
+                  <Lock className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                </div>
               </div>
-            </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="referralCode" className="arabic-body font-medium">كود الإحالة (اختياري)</Label>
+                <div className="relative">
+                  <Input
+                    id="referralCode"
+                    name="referralCode"
+                    type="text"
+                    placeholder="أدخل كود الإحالة إن وجد"
+                    value={formData.referralCode}
+                    onChange={handleChange}
+                    className="rounded-xl border-gray-200 focus:border-primary/40 focus:ring-primary/20 h-12 pr-12"
+                  />
+                  <Users className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                </div>
+                {formData.referralCode && (
+                  <p className="text-sm text-success arabic-body">
+                    ✅ ستحصل على مكافأة إضافية عند التسجيل!
+                  </p>
+                )}
+              </div>
+            </>
           )}
 
           {isLogin && (
@@ -175,9 +252,10 @@ const Login = () => {
 
           <Button 
             type="submit"
-            className="w-full h-12 bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            disabled={loading}
+            className="w-full h-12 bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLogin ? "تسجيل الدخول" : "إنشاء الحساب"}
+            {loading ? "جاري المعالجة..." : (isLogin ? "تسجيل الدخول" : "إنشاء الحساب")}
           </Button>
         </form>
 
