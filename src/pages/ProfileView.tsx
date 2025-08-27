@@ -16,15 +16,65 @@ import {
   MessageCircle
 } from "lucide-react";
 import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useUserProfiles } from "@/hooks/useUserProfiles";
+import { toast } from "sonner";
 
 const ProfileView = () => {
   const { username } = useParams();
   const [liked, setLiked] = useState(false);
-  const [views] = useState(1250);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { getProfileByUrl } = useUserProfiles();
 
-  // Mock profile data - in real app this would come from API
-  const profile = {
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!username) return;
+      
+      try {
+        setLoading(true);
+        const profileData = await getProfileByUrl(username);
+        setProfile(profileData);
+      } catch (error) {
+        console.error('Error loading profile:', error);
+        toast.error('خطأ في تحميل الملف الشخصي');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [username]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground arabic-body">جاري تحميل الملف الشخصي...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-4 arabic-heading">الملف غير موجود</h1>
+          <p className="text-muted-foreground arabic-body mb-8">لم يتم العثور على الملف الشخصي المطلوب</p>
+          <Button asChild>
+            <Link to="/">العودة للصفحة الرئيسية</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const profileData = profile.profile_data || {};
+  
+  // Mock fallback data - in real app this would come from database
+  const fallbackProfile = {
     name: "أحمد محمد",
     title: "مطور تطبيقات الويب | مختص React & Node.js",
     bio: "مطور ويب محترف مع أكثر من 5 سنوات خبرة في تطوير التطبيقات الحديثة. أعمل مع الشركات الناشئة والمؤسسات لتحويل الأفكار إلى منتجات رقمية ناجحة.",
@@ -129,7 +179,7 @@ const ProfileView = () => {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1 text-muted-foreground">
                 <Eye className="w-4 h-4" />
-                <span className="text-sm">{views.toLocaleString()}</span>
+                <span className="text-sm">{profile.view_count || 0}</span>
               </div>
               
               <Button
@@ -168,39 +218,43 @@ const ProfileView = () => {
           <Card className="p-8 rounded-2xl border-gray-200 shadow-lg mb-8">
             <div className="text-center mb-8">
               <div className="w-32 h-32 bg-gradient-to-r from-primary to-premium rounded-full mx-auto mb-6 flex items-center justify-center text-white text-4xl font-bold shadow-lg">
-                {profile.name.charAt(0)}
+                {(profileData.name || fallbackProfile.name).charAt(0)}
               </div>
-              <h1 className="text-4xl font-bold mb-4 arabic-heading">{profile.name}</h1>
-              <p className="text-xl text-muted-foreground mb-6 arabic-body">{profile.title}</p>
+              <h1 className="text-4xl font-bold mb-4 arabic-heading">{profileData.name || fallbackProfile.name}</h1>
+              <p className="text-xl text-muted-foreground mb-6 arabic-body">{profileData.title || fallbackProfile.title}</p>
               <p className="text-muted-foreground arabic-body max-w-2xl mx-auto leading-relaxed">
-                {profile.bio}
+                {profileData.bio || fallbackProfile.bio}
               </p>
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <Eye className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">{profile.view_count || 0} مشاهدة</span>
+              </div>
             </div>
 
             {/* Contact Info */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              {profile.location && (
+              {(profileData.location || fallbackProfile.location) && (
                 <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl">
                   <MapPin className="w-5 h-5 text-primary" />
-                  <span className="arabic-body">{profile.location}</span>
+                  <span className="arabic-body">{profileData.location || fallbackProfile.location}</span>
                 </div>
               )}
-              {profile.email && (
+              {(profileData.email || fallbackProfile.email) && (
                 <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl">
                   <Mail className="w-5 h-5 text-primary" />
-                  <span className="arabic-body">{profile.email}</span>
+                  <span className="arabic-body">{profileData.email || fallbackProfile.email}</span>
                 </div>
               )}
-              {profile.phone && (
+              {(profileData.phone || fallbackProfile.phone) && (
                 <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl">
                   <Phone className="w-5 h-5 text-primary" />
-                  <span className="arabic-body">{profile.phone}</span>
+                  <span className="arabic-body">{profileData.phone || fallbackProfile.phone}</span>
                 </div>
               )}
-              {profile.website && (
+              {(profileData.website || fallbackProfile.website) && (
                 <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl">
                   <Globe className="w-5 h-5 text-primary" />
-                  <a href={profile.website} target="_blank" rel="noopener noreferrer" className="arabic-body hover:text-primary">
+                  <a href={profileData.website || fallbackProfile.website} target="_blank" rel="noopener noreferrer" className="arabic-body hover:text-primary">
                     الموقع الإلكتروني
                   </a>
                 </div>
@@ -209,7 +263,7 @@ const ProfileView = () => {
 
             {/* Social Links */}
             <div className="flex justify-center gap-4">
-              {profile.socialLinks.map((link, index) => (
+              {(profileData.socialLinks || fallbackProfile.socialLinks).map((link, index) => (
                 <Button
                   key={index}
                   variant="outline"
@@ -230,7 +284,7 @@ const ProfileView = () => {
           <Card className="p-6 rounded-2xl border-gray-200 shadow-lg mb-8">
             <h2 className="text-2xl font-bold mb-6 arabic-heading">المهارات والخبرات</h2>
             <div className="flex flex-wrap gap-3">
-              {profile.skills.map((skill, index) => (
+              {(profileData.skills || fallbackProfile.skills).map((skill, index) => (
                 <Badge 
                   key={index}
                   className="bg-gradient-to-r from-primary/10 to-premium/10 text-primary border border-primary/20 px-4 py-2 rounded-full text-base"
@@ -245,7 +299,7 @@ const ProfileView = () => {
           <Card className="p-6 rounded-2xl border-gray-200 shadow-lg mb-8">
             <h2 className="text-2xl font-bold mb-6 arabic-heading">معرض الأعمال</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {profile.portfolio.map((project, index) => (
+              {(profileData.portfolio || fallbackProfile.portfolio).map((project, index) => (
                 <Card key={index} className="p-6 rounded-xl border-gray-200 hover:shadow-lg transition-shadow duration-300">
                   <div className="w-full h-32 bg-gradient-to-br from-primary/10 to-premium/10 rounded-lg mb-4 flex items-center justify-center">
                     <div className="text-4xl">🚀</div>
@@ -274,7 +328,7 @@ const ProfileView = () => {
           <Card className="p-6 rounded-2xl border-gray-200 shadow-lg mb-8">
             <h2 className="text-2xl font-bold mb-6 arabic-heading">الخدمات المتاحة</h2>
             <div className="grid md:grid-cols-2 gap-6">
-              {profile.services.map((service, index) => (
+              {(profileData.services || fallbackProfile.services).map((service, index) => (
                 <Card key={index} className="p-6 rounded-xl border-primary/20 bg-gradient-to-br from-primary/5 to-premium/5">
                   <h3 className="font-bold mb-3 arabic-heading">{service.title}</h3>
                   <p className="text-muted-foreground mb-4 arabic-body">{service.description}</p>
@@ -295,7 +349,7 @@ const ProfileView = () => {
           <Card className="p-6 rounded-2xl border-gray-200 shadow-lg mb-8">
             <h2 className="text-2xl font-bold mb-6 arabic-heading">آراء العملاء</h2>
             <div className="grid md:grid-cols-2 gap-6">
-              {profile.testimonials.map((testimonial, index) => (
+              {(profileData.testimonials || fallbackProfile.testimonials).map((testimonial, index) => (
                 <Card key={index} className="p-6 rounded-xl border-gray-200 bg-muted/30">
                   <div className="flex items-center gap-1 mb-3">
                     {[...Array(testimonial.rating)].map((_, i) => (
