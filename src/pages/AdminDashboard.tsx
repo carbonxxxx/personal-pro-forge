@@ -123,31 +123,37 @@ const AdminDashboard = () => {
 
       if (profilesError) throw profilesError;
 
+      // جلب بيانات المستخدمين من Auth وربطها بالملفات الشخصية
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      if (authError) throw authError;
+
       // جلب بيانات الاشتراكات بشكل منفصل
       const usersWithData = await Promise.all(
-        (profiles || []).map(async (profile) => {
+        authUsers.users.map(async (authUser) => {
+          const profile = profiles?.find(p => p.user_id === authUser.id);
+          
           const { data: subscription } = await supabase
             .from('user_subscriptions')
             .select(`
               status,
               subscription_plan:subscription_plans(name, tier)
             `)
-            .eq('user_id', profile.user_id)
+            .eq('user_id', authUser.id)
             .eq('status', 'active')
             .single();
 
           return {
-            id: profile.user_id,
-            email: profile.display_name || 'غير محدد',
-            created_at: profile.created_at,
-            last_sign_in_at: profile.updated_at,
-            profile: {
+            id: authUser.id,
+            email: authUser.email || 'غير محدد',
+            created_at: authUser.created_at,
+            last_sign_in_at: authUser.last_sign_in_at,
+            profile: profile ? {
               display_name: profile.display_name,
               wallet_balance: profile.wallet_balance,
               total_earnings: profile.total_earnings,
               referral_count: profile.referral_count,
               is_active: profile.is_active
-            },
+            } : undefined,
             subscription: subscription
           };
         })
@@ -204,10 +210,11 @@ const AdminDashboard = () => {
       setSelectedTransaction(null);
       setAdminNotes('');
       
-      window.location.reload();
-    } catch (error) {
+      // إعادة تحميل البيانات بدلاً من إعادة تحميل الصفحة
+      await Promise.all([fetchUsers(), fetchProducts()]);
+    } catch (error: any) {
       console.error('Error updating transaction:', error);
-      toast.error('حدث خطأ أثناء تحديث المعاملة');
+      toast.error('حدث خطأ أثناء تحديث المعاملة: ' + (error.message || 'خطأ غير معروف'));
     } finally {
       setLoading(false);
     }
@@ -243,11 +250,13 @@ const AdminDashboard = () => {
       if (error) throw error;
       
       toast.success(`تم شحن ${amount} د.ل للمستخدم بنجاح`);
-      fetchUsers();
+      await fetchUsers(); // إعادة تحميل البيانات
       setSelectedUser(null);
-    } catch (error) {
+      setManualBalanceAmount(0);
+      setManualBalanceNotes('');
+    } catch (error: any) {
       console.error('خطأ في شحن الرصيد:', error);
-      toast.error('حدث خطأ أثناء شحن الرصيد');
+      toast.error('حدث خطأ أثناء شحن الرصيد: ' + (error.message || 'خطأ غير معروف'));
     }
   };
 

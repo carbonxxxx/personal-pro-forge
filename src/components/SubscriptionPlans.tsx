@@ -45,12 +45,24 @@ const SubscriptionPlans = () => {
         setProcessingPlan(null);
       }
     } else {
-      // For paid plans, redirect to payment page
-      // This will be implemented when we add payment system
-      toast({
-        title: "سيتم إضافة نظام الدفع قريباً",
-        description: "يرجى التواصل مع الإدارة لتفعيل الباقة المدفوعة"
-      });
+      // For paid plans, create subscription and redirect to payment
+      try {
+        setProcessingPlan(planId);
+        await createSubscription(planId, 'pending');
+        toast({
+          title: "تم إنشاء طلب الاشتراك!",
+          description: "يرجى إيداع مبلغ الاشتراك لتفعيل الباقة",
+          variant: "default"
+        });
+      } catch (error: any) {
+        toast({
+          title: "خطأ في الاشتراك",
+          description: error.message,
+          variant: "destructive"
+        });
+      } finally {
+        setProcessingPlan(null);
+      }
     }
   };
 
