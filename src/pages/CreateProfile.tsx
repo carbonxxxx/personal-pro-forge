@@ -21,10 +21,16 @@ import {
   Mail,
   Globe
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useUserProfiles } from "@/hooks/useUserProfiles";
+import { useTemplates } from "@/hooks/useTemplates";
+import { toast } from "sonner";
 
 const CreateProfile = () => {
-  const [selectedTemplate, setSelectedTemplate] = useState("minimalist");
+  const navigate = useNavigate();
+  const { allTemplates, loading: templatesLoading } = useTemplates();
+  const { createProfile, loading: creatingProfile } = useUserProfiles();
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [profileData, setProfileData] = useState({
     name: "",
     title: "",
@@ -47,51 +53,30 @@ const CreateProfile = () => {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [newSkill, setNewSkill] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const templates = [
-    {
-      id: "minimalist",
-      name: "Minimalist Pro",
-      description: "تصميم بسيط وأنيق",
-      tier: "free",
-      gradient: "from-gray-400 to-gray-600"
-    },
-    {
-      id: "creative",
-      name: "Creative Grid", 
-      description: "عرض أعمال إبداعي",
-      tier: "premium",
-      gradient: "from-premium to-purple-600"
-    },
-    {
-      id: "dark",
-      name: "Dark Mode Hero",
-      description: "تصميم ليلي جذاب",
-      tier: "premium", 
-      gradient: "from-gray-800 to-purple-900"
-    },
-    {
-      id: "startup",
-      name: "Startup Pitch",
-      description: "للمؤسسين ورواد الأعمال",
-      tier: "business",
-      gradient: "from-business to-blue-600"
-    },
-    {
-      id: "freelancer",
-      name: "Freelancer Hub",
-      description: "عرض خدمات ومهارات",
-      tier: "premium",
-      gradient: "from-green-500 to-teal-600"
-    },
-    {
-      id: "corporate",
-      name: "Corporate Card",
-      description: "تصميم رسمي احترافي",
-      tier: "business",
-      gradient: "from-blue-700 to-indigo-800"
+  const handleSave = async () => {
+    if (!selectedTemplate) {
+      toast.error("يرجى اختيار قالب");
+      return;
     }
-  ];
+
+    if (!profileData.name || !profileData.title) {
+      toast.error("يرجى ملء الحقول المطلوبة");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await createProfile(selectedTemplate, profileData, profileData.customUrl);
+      toast.success("تم إنشاء الملف بنجاح!");
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast.error(error.message || "حدث خطأ في إنشاء الملف");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const getTierBadge = (tier: string) => {
     switch (tier) {
@@ -171,9 +156,13 @@ const CreateProfile = () => {
                 <Eye className="w-4 h-4 ml-2" />
                 معاينة
               </Button>
-              <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+              <Button 
+                onClick={handleSave}
+                disabled={saving || !selectedTemplate}
+                className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
                 <Save className="w-4 h-4 ml-2" />
-                حفظ ونشر
+                {saving ? "جاري الحفظ..." : "حفظ ونشر"}
               </Button>
             </div>
           </div>
@@ -226,7 +215,7 @@ const CreateProfile = () => {
               </div>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {templates.map((template) => (
+                {allTemplates.map((template) => (
                   <Card 
                     key={template.id}
                     className={`p-6 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-105 ${
@@ -237,7 +226,7 @@ const CreateProfile = () => {
                     onClick={() => setSelectedTemplate(template.id)}
                   >
                     {/* Template Preview */}
-                    <div className={`w-full h-32 bg-gradient-to-br ${template.gradient} rounded-xl mb-4 flex items-center justify-center relative overflow-hidden`}>
+                    <div className={`w-full h-32 bg-gradient-to-br ${template.gradient_colors || 'from-gray-400 to-gray-600'} rounded-xl mb-4 flex items-center justify-center relative overflow-hidden`}>
                       <div className="absolute inset-3 bg-white/90 rounded-lg p-3">
                         <div className="w-8 h-8 bg-gradient-to-r from-primary to-premium rounded-full mx-auto mb-2"></div>
                         <div className="h-1 bg-gray-200 rounded mb-1"></div>
@@ -271,7 +260,8 @@ const CreateProfile = () => {
               <div className="flex justify-center">
                 <Button 
                   onClick={() => setCurrentStep(2)}
-                  className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                  disabled={!selectedTemplate}
+                  className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   متابعة
                   <ArrowLeft className="w-5 h-5 mr-2 rtl:rotate-180" />

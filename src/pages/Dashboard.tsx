@@ -23,13 +23,21 @@ import {
   Upload
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useUserProfiles } from "@/hooks/useUserProfiles";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { usePayments } from "@/hooks/usePayments";
+import { PaymentForm, TransactionsList } from "@/components/PaymentForms";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const { user, signOut } = useAuth();
   const { profile, transactions, referralEarnings, stats, loading } = useProfile();
+  const { profiles, loading: profilesLoading } = useUserProfiles();
+  const { currentPlan } = useSubscriptions();
+  const { transactions: paymentTransactions } = usePayments();
 
   if (loading) {
     return (
@@ -55,35 +63,18 @@ const Dashboard = () => {
     );
   }
 
-  const profiles = [
-    {
-      id: 1,
-      name: "أحمد محمد - مطور",
-      template: "Minimalist Pro",
-      views: 450,
-      status: "active",
-      url: "ahmed-dev",
-      lastUpdated: "2024-03-15"
-    },
-    {
-      id: 2,
-      name: "أحمد - مصمم جرافيك", 
-      template: "Creative Grid",
-      views: 320,
-      status: "active",
-      url: "ahmed-designer",
-      lastUpdated: "2024-03-10"
-    },
-    {
-      id: 3,
-      name: "أحمد - استشاري أعمال",
-      template: "Corporate Card", 
-      views: 480,
-      status: "draft",
-      url: "ahmed-business",
-      lastUpdated: "2024-03-12"
+  const handleCopyUrl = (url: string) => {
+    navigator.clipboard.writeText(`https://proforge.ly/${url}`);
+    toast.success("تم نسخ الرابط بنجاح!");
+  };
+
+  const handleCopyReferralCode = () => {
+    if (profile?.referral_code) {
+      const referralUrl = `${window.location.origin}?ref=${profile.referral_code}`;
+      navigator.clipboard.writeText(referralUrl);
+      toast.success("تم نسخ رابط الإحالة بنجاح!");
     }
-  ];
+  };
 
   const referrals = [
     { name: "سارة أحمد", joinDate: "2024-03-10", plan: "premium", earnings: 11.00 },
@@ -108,6 +99,7 @@ const Dashboard = () => {
     { id: "overview", name: "نظرة عامة", icon: BarChart3 },
     { id: "profiles", name: "ملفاتي", icon: FileText },
     { id: "earnings", name: "الأرباح", icon: DollarSign },
+    { id: "wallet", name: "المحفظة", icon: Wallet },
     { id: "referrals", name: "الإحالات", icon: Users },
     { id: "settings", name: "الإعدادات", icon: Settings }
   ];
@@ -187,15 +179,17 @@ const Dashboard = () => {
                     إليك نظرة عامة على أداء ملفاتك الشخصية وأرباحك
                   </p>
                   <div className="flex gap-4">
-                    <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                      <Plus className="w-5 h-5 ml-2" />
-                      إنشاء ملف جديد
-                    </Button>
+                    <Link to="/create-profile">
+                      <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                        <Plus className="w-5 h-5 ml-2" />
+                        إنشاء ملف جديد
+                      </Button>
+                    </Link>
                     {profile && (
                       <div className="flex items-center gap-2 px-4 py-2 bg-white/80 rounded-xl border">
                         <span className="text-sm text-muted-foreground arabic-body">كود الإحالة:</span>
                         <code className="font-mono text-sm bg-primary/10 px-2 py-1 rounded">{profile.referral_code}</code>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleCopyReferralCode}>
                           <Copy className="w-3 h-3" />
                         </Button>
                       </div>
@@ -210,10 +204,10 @@ const Dashboard = () => {
                       <div className="w-12 h-12 bg-gradient-to-r from-primary to-premium rounded-xl flex items-center justify-center">
                         <FileText className="w-6 h-6 text-white" />
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold arabic-heading">{stats.totalProfiles}</div>
-                        <div className="text-sm text-muted-foreground arabic-body">إجمالي الملفات</div>
-                      </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold arabic-heading">{profiles.length}</div>
+                    <div className="text-sm text-muted-foreground arabic-body">إجمالي الملفات</div>
+                  </div>
                     </div>
                   </Card>
 
@@ -223,7 +217,7 @@ const Dashboard = () => {
                         <Eye className="w-6 h-6 text-white" />
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold arabic-heading">{stats.totalViews.toLocaleString()}</div>
+                        <div className="text-2xl font-bold arabic-heading">{profiles.reduce((sum, p) => sum + (p.view_count || 0), 0).toLocaleString()}</div>
                         <div className="text-sm text-muted-foreground arabic-body">إجمالي المشاهدات</div>
                       </div>
                     </div>
@@ -305,54 +299,63 @@ const Dashboard = () => {
                     <h2 className="text-2xl font-bold arabic-heading">ملفاتي الشخصية</h2>
                     <p className="text-muted-foreground arabic-body">إدارة وتحرير ملفاتك الاحترافية</p>
                   </div>
-                  <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                    <Plus className="w-5 h-5 ml-2" />
-                    إنشاء ملف جديد
-                  </Button>
+                  <Link to="/create-profile">
+                    <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                      <Plus className="w-5 h-5 ml-2" />
+                      إنشاء ملف جديد
+                    </Button>
+                  </Link>
                 </div>
 
                 {/* Profiles Grid */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {profiles.map((profile) => (
-                    <Card key={profile.id} className="p-6 rounded-2xl border-gray-200 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  {profiles.map((userProfile) => (
+                    <Card key={userProfile.id} className="p-6 rounded-2xl border-gray-200 hover:shadow-lg transition-all duration-300 hover:scale-105">
                       <div className="flex items-center justify-between mb-4">
                         <Badge 
                           className={`${
-                            profile.status === 'active' 
+                            userProfile.is_active 
                               ? 'bg-success text-white' 
                               : 'bg-muted text-muted-foreground'
                           }`}
                         >
-                          {profile.status === 'active' ? 'نشط' : 'مسودة'}
+                          {userProfile.is_active ? 'نشط' : 'مسودة'}
                         </Badge>
                         <div className="flex items-center gap-1">
                           <Eye className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{profile.views}</span>
+                          <span className="text-sm font-medium">{userProfile.view_count || 0}</span>
                         </div>
                       </div>
 
-                      <h3 className="font-bold mb-2 arabic-heading">{profile.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-4 arabic-body">القالب: {profile.template}</p>
+                      <h3 className="font-bold mb-2 arabic-heading">{userProfile.profile_data?.name || 'ملف بدون عنوان'}</h3>
+                      <p className="text-sm text-muted-foreground mb-4 arabic-body">القالب: {userProfile.template?.name || 'غير محدد'}</p>
                       
                       <div className="flex items-center gap-2 mb-4 p-3 bg-muted/50 rounded-xl">
                         <span className="text-sm text-muted-foreground arabic-body">الرابط:</span>
                         <code className="text-sm font-mono bg-white px-2 py-1 rounded">
-                          proforge.ly/{profile.url}
+                          proforge.ly/{userProfile.custom_url || userProfile.id.slice(0, 8)}
                         </code>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleCopyUrl(userProfile.custom_url || userProfile.id.slice(0, 8))}
+                        >
                           <Copy className="w-3 h-3" />
                         </Button>
                       </div>
 
                       <div className="text-xs text-muted-foreground mb-4 arabic-body">
-                        آخر تحديث: {profile.lastUpdated}
+                        آخر تحديث: {new Date(userProfile.updated_at).toLocaleDateString('ar')}
                       </div>
 
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="flex-1 rounded-lg hover:bg-primary/5 hover:border-primary/40">
-                          <Eye className="w-4 h-4 ml-1" />
-                          معاينة
-                        </Button>
+                        <Link to={`/${userProfile.custom_url || userProfile.id}`} target="_blank" className="flex-1">
+                          <Button size="sm" variant="outline" className="w-full rounded-lg hover:bg-primary/5 hover:border-primary/40">
+                            <Eye className="w-4 h-4 ml-1" />
+                            معاينة
+                          </Button>
+                        </Link>
                         <Button size="sm" variant="outline" className="flex-1 rounded-lg hover:bg-primary/5 hover:border-primary/40">
                           <Edit className="w-4 h-4 ml-1" />
                           تحرير
@@ -424,6 +427,44 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 </Card>
+              </>
+            )}
+
+            {activeTab === "wallet" && (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold arabic-heading">المحفظة والمعاملات</h2>
+                    <p className="text-muted-foreground arabic-body">إدارة إيداع وسحب الأموال</p>
+                  </div>
+                </div>
+
+                {/* Wallet Balance */}
+                <Card className="p-6 rounded-2xl border-gray-200 bg-gradient-to-r from-success/5 to-green-600/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold mb-2 arabic-heading">رصيد المحفظة</h3>
+                      <div className="text-3xl font-bold text-success arabic-heading">
+                        {profile?.wallet_balance?.toFixed(2) || "0.00"} د.ل
+                      </div>
+                      <p className="text-sm text-muted-foreground arabic-body mt-1">
+                        متاح للسحب
+                      </p>
+                    </div>
+                    <div className="w-16 h-16 bg-gradient-to-r from-success to-green-600 rounded-2xl flex items-center justify-center">
+                      <Wallet className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Payment Forms */}
+                <div className="grid lg:grid-cols-2 gap-8">
+                  <PaymentForm type="deposit" />
+                  <PaymentForm type="withdrawal" />
+                </div>
+
+                {/* Transactions List */}
+                <TransactionsList />
               </>
             )}
 
