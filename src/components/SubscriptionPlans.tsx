@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Star, Zap, Crown } from "lucide-react";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 const SubscriptionPlans = () => {
   const { plans, currentPlan, createSubscription, loading } = useSubscriptions();
