@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import CreateProfile from "./pages/CreateProfile";
 import ProfileView from "./pages/ProfileView";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminLogin from "./pages/AdminLogin";
 import ProductsManager from "./pages/ProductsManager";
 import NotFound from "./pages/NotFound";
 
@@ -27,7 +28,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/create-profile" element={<CreateProfile />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/products" element={<ProductsManager />} />
             <Route path="/:username" element={<ProfileView />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
