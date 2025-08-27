@@ -150,6 +150,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          is_active: boolean | null
           phone: string | null
           referral_code: string
           referral_count: number | null
@@ -167,6 +168,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_active?: boolean | null
           phone?: string | null
           referral_code: string
           referral_count?: number | null
@@ -184,6 +186,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_active?: boolean | null
           phone?: string | null
           referral_code?: string
           referral_count?: number | null
@@ -588,6 +591,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_manual_balance: {
+        Args: { admin_notes?: string; amount: number; target_user_id: string }
+        Returns: undefined
+      }
       generate_referral_code: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -605,6 +612,10 @@ export type Database = {
       }
       promote_admin_by_email: {
         Args: { email_input: string }
+        Returns: undefined
+      }
+      toggle_user_status: {
+        Args: { new_status: boolean; target_user_id: string }
         Returns: undefined
       }
     }
