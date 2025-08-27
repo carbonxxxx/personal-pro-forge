@@ -109,46 +109,54 @@ const AdminDashboard = () => {
     limitations: []
   });
 
-  // جلب بيانات المستخدمين
+  // حالات للشحن اليدوي
+  const [manualBalanceAmount, setManualBalanceAmount] = useState(0);
+  const [manualBalanceNotes, setManualBalanceNotes] = useState('');
+
+  // جلب بيانات المستخدمين من خلال profiles table
   const fetchUsers = async () => {
     try {
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) throw authError;
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      const usersWithProfiles = await Promise.all(
-        authUsers.users.map(async (authUser) => {
-          // جلب الملف الشخصي
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', authUser.id)
-            .single();
+      if (profilesError) throw profilesError;
 
-          // جلب الاشتراك
+      // جلب بيانات الاشتراكات بشكل منفصل
+      const usersWithData = await Promise.all(
+        (profiles || []).map(async (profile) => {
           const { data: subscription } = await supabase
             .from('user_subscriptions')
             .select(`
-              *,
+              status,
               subscription_plan:subscription_plans(name, tier)
             `)
-            .eq('user_id', authUser.id)
+            .eq('user_id', profile.user_id)
             .eq('status', 'active')
             .single();
 
           return {
-            id: authUser.id,
-            email: authUser.email || '',
-            created_at: authUser.created_at,
-            last_sign_in_at: authUser.last_sign_in_at,
-            profile,
-            subscription
+            id: profile.user_id,
+            email: profile.display_name || 'غير محدد',
+            created_at: profile.created_at,
+            last_sign_in_at: profile.updated_at,
+            profile: {
+              display_name: profile.display_name,
+              wallet_balance: profile.wallet_balance,
+              total_earnings: profile.total_earnings,
+              referral_count: profile.referral_count,
+              is_active: profile.is_active
+            },
+            subscription: subscription
           };
         })
       );
 
-      setUsers(usersWithProfiles);
+      setUsers(usersWithData);
     } catch (error) {
       console.error('خطأ في جلب المستخدمين:', error);
+      toast.error('خطأ في جلب بيانات المستخدمين');
     }
   };
 
@@ -205,15 +213,41 @@ const AdminDashboard = () => {
     }
   };
 
-  // تفعيل/إلغاء تفعيل المستخدم (placeholder - profiles table doesn't have is_active)
+  // تفعيل/إلغاء تفعيل المستخدم
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      // Note: profiles table doesn't have is_active field, 
-      // so this is just a placeholder function
-      toast.info('وظيفة تفعيل/إلغاء تفعيل المستخدم ستتم إضافتها قريباً');
+      const { error } = await supabase.rpc('toggle_user_status', {
+        target_user_id: userId,
+        new_status: !currentStatus
+      });
+
+      if (error) throw error;
+      
+      toast.success(`تم ${!currentStatus ? 'تفعيل' : 'إلغاء تفعيل'} المستخدم`);
+      fetchUsers();
     } catch (error) {
       console.error('خطأ في تحديث حالة المستخدم:', error);
       toast.error('حدث خطأ أثناء تحديث حالة المستخدم');
+    }
+  };
+
+  // شحن رصيد المستخدم يدوياً
+  const addManualBalance = async (userId: string, amount: number, notes: string = '') => {
+    try {
+      const { error } = await supabase.rpc('add_manual_balance', {
+        target_user_id: userId,
+        amount: amount,
+        admin_notes: notes || 'شحن يدوي من قبل الإدارة'
+      });
+
+      if (error) throw error;
+      
+      toast.success(`تم شحن ${amount} د.ل للمستخدم بنجاح`);
+      fetchUsers();
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('خطأ في شحن الرصيد:', error);
+      toast.error('حدث خطأ أثناء شحن الرصيد');
     }
   };
 
@@ -305,7 +339,7 @@ const AdminDashboard = () => {
     .reduce((sum, t) => sum + (t.amount || 0), 0);
   
   const totalUsers = users.length;
-  const activeUsers = users.length; // All users are considered active since profiles table doesn't have is_active
+  const activeUsers = users.filter(u => u.profile?.is_active).length;
   const totalProfiles = profiles.length;
   const activeProfiles = profiles.filter(p => p.is_active).length;
 
@@ -610,11 +644,11 @@ const AdminDashboard = () => {
                         <TableCell className="arabic-heading font-bold text-premium">
                           {user.profile?.referral_count || 0}
                         </TableCell>
-                        <TableCell>
-                          <Badge className="bg-success text-white">
-                            نشط
-                          </Badge>
-                        </TableCell>
+                         <TableCell>
+                           <Badge className={user.profile?.is_active ? 'bg-success text-white' : 'bg-destructive text-white'}>
+                             {user.profile?.is_active ? 'نشط' : 'معطل'}
+                           </Badge>
+                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
                             <Button
@@ -636,40 +670,95 @@ const AdminDashboard = () => {
                                   <DialogTitle className="arabic-heading">تفاصيل المستخدم</DialogTitle>
                                 </DialogHeader>
                                 <div className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <Label className="arabic-body text-sm">البريد الإلكتروني</Label>
-                                      <p className="text-foreground">{user.email}</p>
-                                    </div>
-                                    <div>
-                                      <Label className="arabic-body text-sm">الاسم</Label>
-                                      <p className="text-foreground">{user.profile?.display_name || 'غير محدد'}</p>
-                                    </div>
-                                    <div>
-                                      <Label className="arabic-body text-sm">رصيد المحفظة</Label>
-                                      <p className="text-success font-bold">{user.profile?.wallet_balance?.toFixed(2) || '0.00'} د.ل</p>
-                                    </div>
-                                    <div>
-                                      <Label className="arabic-body text-sm">إجمالي الأرباح</Label>
-                                      <p className="text-gold font-bold">{user.profile?.total_earnings?.toFixed(2) || '0.00'} د.ل</p>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="flex gap-2 pt-4">
-                                    <Button
-                                      variant="outline"
-                                      onClick={() => toggleUserStatus(user.id, true)}
-                                      className="text-orange-600"
-                                    >
-                                      إدارة المستخدم
-                                    </Button>
-                                    <Button
-                                      variant="destructive"
-                                      onClick={() => deleteUser(user.id)}
-                                    >
-                                      حذف المستخدم
-                                    </Button>
-                                  </div>
+                                   <div className="grid grid-cols-2 gap-4 mb-4">
+                                     <div>
+                                       <Label className="arabic-body text-sm">البريد الإلكتروني</Label>
+                                       <p className="text-foreground">{user.email}</p>
+                                     </div>
+                                     <div>
+                                       <Label className="arabic-body text-sm">الاسم</Label>
+                                       <p className="text-foreground">{user.profile?.display_name || 'غير محدد'}</p>
+                                     </div>
+                                     <div>
+                                       <Label className="arabic-body text-sm">رصيد المحفظة</Label>
+                                       <p className="text-success font-bold">{user.profile?.wallet_balance?.toFixed(2) || '0.00'} د.ل</p>
+                                     </div>
+                                     <div>
+                                       <Label className="arabic-body text-sm">إجمالي الأرباح</Label>
+                                       <p className="text-gold font-bold">{user.profile?.total_earnings?.toFixed(2) || '0.00'} د.ل</p>
+                                     </div>
+                                   </div>
+                                   
+                                   {/* قسم الشحن اليدوي */}
+                                   <div className="border rounded-lg p-4 bg-muted/10">
+                                     <h5 className="font-semibold mb-3 arabic-heading text-foreground">شحن رصيد يدوي</h5>
+                                     <div className="grid grid-cols-2 gap-4">
+                                       <div>
+                                         <Label className="arabic-body text-sm">المبلغ (د.ل)</Label>
+                                         <Input
+                                           type="number"
+                                           min="0"
+                                           step="0.01"
+                                           value={manualBalanceAmount}
+                                           onChange={(e) => setManualBalanceAmount(Number(e.target.value))}
+                                           placeholder="0.00"
+                                           className="arabic-body"
+                                         />
+                                       </div>
+                                       <div>
+                                         <Label className="arabic-body text-sm">ملاحظة (اختياري)</Label>
+                                         <Input
+                                           value={manualBalanceNotes}
+                                           onChange={(e) => setManualBalanceNotes(e.target.value)}
+                                           placeholder="ملاحظة الشحن..."
+                                           className="arabic-body"
+                                         />
+                                       </div>
+                                     </div>
+                                     <Button
+                                       className="w-full mt-3 bg-success hover:bg-success/90"
+                                       onClick={() => {
+                                         if (manualBalanceAmount > 0) {
+                                           addManualBalance(user.id, manualBalanceAmount, manualBalanceNotes);
+                                           setManualBalanceAmount(0);
+                                           setManualBalanceNotes('');
+                                         } else {
+                                           toast.error('يرجى إدخال مبلغ صحيح');
+                                         }
+                                       }}
+                                       disabled={manualBalanceAmount <= 0}
+                                     >
+                                       <Wallet className="w-4 h-4 ml-2" />
+                                       شحن الرصيد
+                                     </Button>
+                                   </div>
+                                   
+                                   <div className="flex gap-2 pt-4">
+                                     <Button
+                                       variant="outline"
+                                       onClick={() => toggleUserStatus(user.id, user.profile?.is_active || false)}
+                                       className={user.profile?.is_active ? "text-orange-600" : "text-success"}
+                                     >
+                                       {user.profile?.is_active ? (
+                                         <>
+                                           <Lock className="w-4 h-4 ml-2" />
+                                           تعطيل المستخدم
+                                         </>
+                                       ) : (
+                                         <>
+                                           <Unlock className="w-4 h-4 ml-2" />
+                                           تفعيل المستخدم
+                                         </>
+                                       )}
+                                     </Button>
+                                     <Button
+                                       variant="destructive"
+                                       onClick={() => deleteUser(user.id)}
+                                     >
+                                       <Trash2 className="w-4 h-4 ml-2" />
+                                       حذف المستخدم
+                                     </Button>
+                                   </div>
                                 </div>
                               </DialogContent>
                             </Dialog>
