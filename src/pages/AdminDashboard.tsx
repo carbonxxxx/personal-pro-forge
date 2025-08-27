@@ -39,11 +39,11 @@ import {
   Filter
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { usePayments } from "@/hooks/usePayments";
+import { useAdminPayments } from "@/hooks/useAdminPayments";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useUserProfiles } from "@/hooks/useUserProfiles";
 import { useTemplates } from "@/hooks/useTemplates";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UserData {
@@ -72,7 +72,7 @@ interface ProductData {
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const { transactions, getTransactionStatusText, getTransactionTypeText, getPaymentMethodName, refetch: refetchTransactions } = usePayments();
+  const { transactions, getTransactionStatusText, getTransactionTypeText, getPaymentMethodName, updateTransactionStatus, refetch: refetchTransactions } = useAdminPayments();
   const { plans } = useSubscriptions();
   const { profiles } = useUserProfiles();
   const { templates } = useTemplates();
@@ -136,7 +136,10 @@ const AdminDashboard = () => {
       setUsers(usersData);
     } catch (error: any) {
       console.error('خطأ في جلب المستخدمين:', error);
-      toast.error('خطأ في جلب بيانات المستخدمين: ' + (error.message || 'خطأ غير معروف'));
+      toast({
+        title: 'خطأ في جلب بيانات المستخدمين: ' + (error.message || 'خطأ غير معروف'),
+        variant: "destructive"
+      });
     }
   };
 
@@ -168,27 +171,22 @@ const AdminDashboard = () => {
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('wallet_transactions')
-        .update({
-          status: status,
-          processed_by: user.id,
-          processed_at: new Date().toISOString(),
-          admin_notes: adminNotes || null
-        })
-        .eq('id', transactionId);
-
-      if (error) throw error;
+      await updateTransactionStatus(transactionId, status, adminNotes || undefined);
       
-      toast.success(`تم ${status === 'approved' ? 'الموافقة على' : 'رفض'} المعاملة`);
+      toast({
+        title: `تم ${status === 'approved' ? 'الموافقة على' : 'رفض'} المعاملة`
+      });
       setSelectedTransaction(null);
       setAdminNotes('');
       
-      // إعادة تحميل البيانات
-      await Promise.all([refetchTransactions(), fetchUsers()]);
+      // إعادة تحميل بيانات المستخدمين
+      await fetchUsers();
     } catch (error: any) {
       console.error('Error updating transaction:', error);
-      toast.error('حدث خطأ أثناء تحديث المعاملة: ' + (error.message || 'خطأ غير معروف'));
+      toast({
+        title: 'حدث خطأ أثناء تحديث المعاملة: ' + (error.message || 'خطأ غير معروف'),
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -204,11 +202,16 @@ const AdminDashboard = () => {
 
       if (error) throw error;
       
-      toast.success(`تم ${!currentStatus ? 'تفعيل' : 'إلغاء تفعيل'} المستخدم`);
+      toast({
+        title: `تم ${!currentStatus ? 'تفعيل' : 'إلغاء تفعيل'} المستخدم`
+      });
       await fetchUsers();
     } catch (error: any) {
       console.error('خطأ في تحديث حالة المستخدم:', error);
-      toast.error('حدث خطأ أثناء تحديث حالة المستخدم: ' + (error.message || 'خطأ غير معروف'));
+      toast({
+        title: 'حدث خطأ أثناء تحديث حالة المستخدم: ' + (error.message || 'خطأ غير معروف'),
+        variant: "destructive"
+      });
     }
   };
 
@@ -223,14 +226,19 @@ const AdminDashboard = () => {
 
       if (error) throw error;
       
-      toast.success(`تم شحن ${amount} د.ل للمستخدم بنجاح`);
+      toast({
+        title: `تم شحن ${amount} د.ل للمستخدم بنجاح`
+      });
       await fetchUsers();
       setSelectedUser(null);
       setManualBalanceAmount(0);
       setManualBalanceNotes('');
     } catch (error: any) {
       console.error('خطأ في شحن الرصيد:', error);
-      toast.error('حدث خطأ أثناء شحن الرصيد: ' + (error.message || 'خطأ غير معروف'));
+      toast({
+        title: 'حدث خطأ أثناء شحن الرصيد: ' + (error.message || 'خطأ غير معروف'),
+        variant: "destructive"
+      });
     }
   };
 
@@ -242,11 +250,16 @@ const AdminDashboard = () => {
       const { error } = await supabase.auth.admin.deleteUser(userId);
       if (error) throw error;
       
-      toast.success('تم حذف المستخدم بنجاح');
+      toast({
+        title: 'تم حذف المستخدم بنجاح'
+      });
       fetchUsers();
     } catch (error) {
       console.error('خطأ في حذف المستخدم:', error);
-      toast.error('حدث خطأ أثناء حذف المستخدم');
+      toast({
+        title: 'حدث خطأ أثناء حذف المستخدم',
+        variant: "destructive"
+      });
     }
   };
 
@@ -260,11 +273,16 @@ const AdminDashboard = () => {
 
       if (error) throw error;
       
-      toast.success(`تم ${!isActive ? 'تفعيل' : 'إلغاء تفعيل'} المنتج`);
+      toast({
+        title: `تم ${!isActive ? 'تفعيل' : 'إلغاء تفعيل'} المنتج`
+      });
       fetchProducts();
     } catch (error) {
       console.error('خطأ في تحديث حالة المنتج:', error);
-      toast.error('حدث خطأ أثناء تحديث حالة المنتج');
+      toast({
+        title: 'حدث خطأ أثناء تحديث حالة المنتج',
+        variant: "destructive"
+      });
     }
   };
 
@@ -277,13 +295,17 @@ const AdminDashboard = () => {
           .update(newPlan)
           .eq('id', editingPlan.id);
         if (error) throw error;
-        toast.success('تم تحديث الباقة بنجاح');
+        toast({
+          title: 'تم تحديث الباقة بنجاح'
+        });
       } else {
         const { error } = await supabase
           .from('subscription_plans')
           .insert(newPlan);
         if (error) throw error;
-        toast.success('تم إنشاء الباقة بنجاح');
+        toast({
+          title: 'تم إنشاء الباقة بنجاح'
+        });
       }
       
       setEditingPlan(null);
@@ -295,7 +317,10 @@ const AdminDashboard = () => {
       window.location.reload();
     } catch (error) {
       console.error('خطأ في معالجة الباقة:', error);
-      toast.error('حدث خطأ أثناء معالجة الباقة');
+      toast({
+        title: 'حدث خطأ أثناء معالجة الباقة',
+        variant: "destructive"
+      });
     }
   };
 
@@ -500,7 +525,7 @@ const AdminDashboard = () => {
                         </TableCell>
                         <TableCell>
                           <div className="arabic-body text-foreground">
-                            {transaction.user_id.slice(0, 8)}...
+                            {transaction.profiles?.display_name || 'مستخدم غير معروف'}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -692,7 +717,10 @@ const AdminDashboard = () => {
                                         if (manualBalanceAmount > 0) {
                                           addManualBalance(user.id, manualBalanceAmount, manualBalanceNotes);
                                         } else {
-                                          toast.error('يرجى إدخال مبلغ صحيح');
+                                          toast({
+                                            title: 'يرجى إدخال مبلغ صحيح',
+                                            variant: "destructive"
+                                          });
                                         }
                                       }}
                                       disabled={manualBalanceAmount <= 0}
@@ -796,7 +824,9 @@ const AdminDashboard = () => {
                             .update({ is_active: !profile.is_active })
                             .eq('id', profile.id)
                             .then(() => {
-                              toast.success(`تم ${!profile.is_active ? 'تفعيل' : 'إلغاء تفعيل'} الملف الشخصي`);
+                              toast({
+                                title: `تم ${!profile.is_active ? 'تفعيل' : 'إلغاء تفعيل'} الملف الشخصي`
+                              });
                               window.location.reload();
                             });
                         }}

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Upload, DollarSign, CreditCard, Building, Smartphone, Download } from "lucide-react";
 import { usePayments } from "@/hooks/usePayments";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 interface PaymentFormProps {
   type: 'deposit' | 'withdrawal';
@@ -36,13 +36,19 @@ export const PaymentForm = ({ type, onSuccess }: PaymentFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !paymentMethod) {
-      toast.error("يرجى ملء جميع الحقول المطلوبة");
+      toast({
+        title: "يرجى ملء جميع الحقول المطلوبة",
+        variant: "destructive"
+      });
       return;
     }
 
     const numericAmount = parseFloat(amount);
     if (numericAmount <= 0) {
-      toast.error("يرجى إدخال مبلغ صحيح");
+      toast({
+        title: "يرجى إدخال مبلغ صحيح",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -51,12 +57,18 @@ export const PaymentForm = ({ type, onSuccess }: PaymentFormProps) => {
       const maxAmount = getMaxWithdrawalAmount(paymentMethod);
       
       if (numericAmount < minAmount) {
-        toast.error(`الحد الأدنى للسحب هو ${minAmount} د.ل`);
+        toast({
+          title: `الحد الأدنى للسحب هو ${minAmount} د.ل`,
+          variant: "destructive"
+        });
         return;
       }
       
       if (maxAmount && numericAmount > maxAmount) {
-        toast.error(`الحد الأقصى للسحب هو ${maxAmount} د.ل`);
+        toast({
+          title: `الحد الأقصى للسحب هو ${maxAmount} د.ل`,
+          variant: "destructive"
+        });
         return;
       }
     }
@@ -65,10 +77,16 @@ export const PaymentForm = ({ type, onSuccess }: PaymentFormProps) => {
     try {
       if (type === 'deposit') {
         await createDepositRequest(numericAmount, paymentMethod, referenceNumber);
-        toast.success("تم إرسال طلب الإيداع بنجاح! سيتم مراجعته خلال 24 ساعة.");
+        toast({
+          title: "تم إرسال طلب الإيداع بنجاح!",
+          description: "سيتم مراجعته خلال 24 ساعة."
+        });
       } else {
         await createWithdrawalRequest(numericAmount, paymentMethod, accountDetails);
-        toast.success("تم إرسال طلب السحب بنجاح! سيتم معالجته خلال 48 ساعة.");
+        toast({
+          title: "تم إرسال طلب السحب بنجاح!",
+          description: "سيتم معالجته خلال 48 ساعة."
+        });
       }
       
       // Reset form
@@ -78,7 +96,10 @@ export const PaymentForm = ({ type, onSuccess }: PaymentFormProps) => {
       setAccountDetails('');
       onSuccess?.();
     } catch (error) {
-      toast.error("حدث خطأ، يرجى المحاولة مرة أخرى");
+      toast({
+        title: "حدث خطأ، يرجى المحاولة مرة أخرى",
+        variant: "destructive"
+      });
       console.error('Payment error:', error);
     } finally {
       setLoading(false);
