@@ -2,145 +2,63 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Heart, Download, Star } from "lucide-react";
+import { useTemplates } from "@/hooks/useTemplates";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const TemplateGallery = () => {
-  const templates = [
-    {
-      id: 1,
-      name: "Minimalist Pro",
-      description: "تصميم بسيط وأنيق للمحترفين",
-      image: "/api/placeholder/300/200",
-      category: "احترافي",
-      tier: "free",
-      rating: 4.8,
-      downloads: 1200,
-      preview: true,
-      gradient: "from-gray-400 to-gray-600"
-    },
-    {
-      id: 2,
-      name: "Creative Grid",
-      description: "عرض أعمال بنمط شبكي إبداعي",
-      image: "/api/placeholder/300/200",
-      category: "إبداعي",
-      tier: "premium",
-      rating: 4.9,
-      downloads: 850,
-      preview: true,
-      gradient: "from-premium to-purple-600"
-    },
-    {
-      id: 3,
-      name: "Dark Mode Hero",
-      description: "تصميم ليلي جذاب ومميز",
-      image: "/api/placeholder/300/200",
-      category: "مبدع",
-      tier: "premium",
-      rating: 4.7,
-      downloads: 950,
-      preview: true,
-      gradient: "from-gray-800 to-purple-900"
-    },
-    {
-      id: 4,
-      name: "Startup Pitch",
-      description: "مناسب للمؤسسين ورواد الأعمال",
-      image: "/api/placeholder/300/200",
-      category: "أعمال",
-      tier: "business",
-      rating: 4.9,
-      downloads: 720,
-      preview: true,
-      gradient: "from-business to-blue-600"
-    },
-    {
-      id: 5,
-      name: "Freelancer Hub",
-      description: "عرض خدمات ومهارات المستقلين",
-      image: "/api/placeholder/300/200", 
-      category: "خدمات",
-      tier: "premium",
-      rating: 4.6,
-      downloads: 1100,
-      preview: true,
-      gradient: "from-green-500 to-teal-600"
-    },
-    {
-      id: 6,
-      name: "Corporate Card",
-      description: "تصميم رسمي احترافي للشركات",
-      image: "/api/placeholder/300/200",
-      category: "شركات",
-      tier: "business",
-      rating: 4.8,
-      downloads: 680,
-      preview: true,
-      gradient: "from-blue-700 to-indigo-800"
-    },
-    {
-      id: 7,
-      name: "Visual Portfolio",
-      description: "تركيز على الصور والفيديوهات",
-      image: "/api/placeholder/300/200",
-      category: "بورتفوليو",
-      tier: "premium",
-      rating: 4.7,
-      downloads: 920,
-      preview: true,
-      gradient: "from-pink-500 to-rose-600"
-    },
-    {
-      id: 8,
-      name: "Interactive Resume",
-      description: "سيرة ذاتية تفاعلية مبتكرة",
-      image: "/api/placeholder/300/200",
-      category: "سيرة ذاتية",
-      tier: "business",
-      rating: 4.9,
-      downloads: 580,
-      preview: true,
-      gradient: "from-indigo-500 to-purple-600"
-    },
-    {
-      id: 9,
-      name: "Influencer Style",
-      description: "مناسب للمؤثرين وصناع المحتوى",
-      image: "/api/placeholder/300/200",
-      category: "تأثير",
-      tier: "super",
-      rating: 5.0,
-      downloads: 450,
-      preview: true,
-      gradient: "from-super to-pink-600"
-    },
-    {
-      id: 10,
-      name: "Arabic Modern",
-      description: "تصميم عربي عصري بطابع مزبر",
-      image: "/api/placeholder/300/200",
-      category: "عربي",
-      tier: "super",
-      rating: 4.9,
-      downloads: 380,
-      preview: true,
-      gradient: "from-gold to-orange-500"
-    }
-  ];
+  const { 
+    templates, 
+    allTemplates, 
+    loading, 
+    selectedCategory, 
+    setSelectedCategory, 
+    categories, 
+    getTierBadge, 
+    incrementDownloads 
+  } = useTemplates();
+  const { canAccessTemplate } = useSubscriptions();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const getTierBadge = (tier: string) => {
-    switch (tier) {
-      case 'free':
-        return <Badge className="bg-gray-500 text-white">مجاني</Badge>;
-      case 'premium':
-        return <Badge className="bg-gradient-to-r from-premium to-purple-600 text-white">مميز</Badge>;
-      case 'business':
-        return <Badge className="bg-gradient-to-r from-business to-blue-600 text-white">أعمال</Badge>;
-      case 'super':
-        return <Badge className="bg-gradient-to-r from-super to-pink-600 text-white animate-pulse">خارق 💥</Badge>;
-      default:
-        return null;
+  const handleTemplateAction = async (template: any) => {
+    if (!user) {
+      toast({
+        title: "يجب تسجيل الدخول أولاً",
+        description: "يرجى تسجيل الدخول لاستخدام القوالب",
+        variant: "destructive"
+      });
+      return;
     }
+
+    if (!canAccessTemplate(template.tier)) {
+      toast({
+        title: "باقة غير مناسبة",
+        description: `يجب ترقية باقتك للوصول إلى قوالب ${template.tier}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Increment downloads
+    await incrementDownloads(template.id);
+    
+    toast({
+      title: "تم بنجاح!",
+      description: "سيتم توجيهك لاستخدام القالب"
+    });
   };
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-gradient-to-b from-muted/20 to-background" id="templates">
+        <div className="container mx-auto px-4 text-center">
+          <div className="text-xl">جاري تحميل القوالب...</div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-gradient-to-b from-muted/20 to-background" id="templates">
@@ -183,7 +101,7 @@ const TemplateGallery = () => {
               {/* Template Image */}
               <div className="relative overflow-hidden">
                 <div 
-                  className={`w-full h-48 bg-gradient-to-br ${template.gradient} flex items-center justify-center relative`}
+                  className={`w-full h-48 bg-gradient-to-br ${template.gradient_colors || 'from-gray-400 to-gray-600'} flex items-center justify-center relative`}
                 >
                   {/* Mockup Content */}
                   <div className="absolute inset-4 bg-white/90 rounded-lg p-4 shadow-lg">
@@ -198,7 +116,9 @@ const TemplateGallery = () => {
 
                   {/* Tier Badge */}
                   <div className="absolute top-3 right-3">
-                    {getTierBadge(template.tier)}
+                    <Badge className={getTierBadge(template.tier).className}>
+                      {getTierBadge(template.tier).text}
+                    </Badge>
                   </div>
 
                   {/* Hover Overlay */}
@@ -230,7 +150,7 @@ const TemplateGallery = () => {
                   <span className="arabic-body">{template.category}</span>
                   <div className="flex items-center gap-1">
                     <Download className="w-4 h-4" />
-                    <span>{template.downloads.toLocaleString()}</span>
+                    <span>{template.downloads_count?.toLocaleString() || '0'}</span>
                   </div>
                 </div>
 
