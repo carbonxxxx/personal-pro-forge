@@ -49,22 +49,13 @@ import { supabase } from "@/integrations/supabase/client";
 interface UserData {
   id: string;
   email: string;
+  display_name?: string;
+  wallet_balance?: number;
+  total_earnings?: number;
+  referral_count?: number;
+  is_active?: boolean;
   created_at: string;
-  last_sign_in_at?: string;
-  profile?: {
-    display_name?: string;
-    wallet_balance?: number;
-    total_earnings?: number;
-    referral_count?: number;
-    is_active?: boolean;
-  };
-  subscription?: {
-    status: string;
-    subscription_plan: {
-      name: string;
-      tier: string;
-    };
-  };
+  updated_at: string;
 }
 
 interface ProductData {
@@ -81,7 +72,7 @@ interface ProductData {
 
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const { transactions, getTransactionStatusText, getTransactionTypeText, getPaymentMethodName } = usePayments();
+  const { transactions, getTransactionStatusText, getTransactionTypeText, getPaymentMethodName, refetch: refetchTransactions } = usePayments();
   const { plans } = useSubscriptions();
   const { profiles } = useUserProfiles();
   const { templates } = useTemplates();
@@ -113,56 +104,39 @@ const AdminDashboard = () => {
   const [manualBalanceAmount, setManualBalanceAmount] = useState(0);
   const [manualBalanceNotes, setManualBalanceNotes] = useState('');
 
-  // جلب بيانات المستخدمين من خلال profiles table
+  // جلب بيانات المستخدمين من profiles table
   const fetchUsers = async () => {
     try {
-      const { data: profiles, error: profilesError } = await supabase
+      console.log('جاري جلب بيانات المستخدمين...');
+      
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('خطأ في جلب البيانات:', profilesError);
+        throw profilesError;
+      }
 
-      // جلب بيانات المستخدمين من Auth وربطها بالملفات الشخصية
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) throw authError;
+      console.log('تم جلب البيانات بنجاح:', profilesData?.length);
 
-      // جلب بيانات الاشتراكات بشكل منفصل
-      const usersWithData = await Promise.all(
-        authUsers.users.map(async (authUser) => {
-          const profile = profiles?.find(p => p.user_id === authUser.id);
-          
-          const { data: subscription } = await supabase
-            .from('user_subscriptions')
-            .select(`
-              status,
-              subscription_plan:subscription_plans(name, tier)
-            `)
-            .eq('user_id', authUser.id)
-            .eq('status', 'active')
-            .single();
+      const usersData = profilesData?.map((profile) => ({
+        id: profile.user_id,
+        email: profile.display_name || 'غير محدد',
+        display_name: profile.display_name,
+        wallet_balance: profile.wallet_balance,
+        total_earnings: profile.total_earnings,
+        referral_count: profile.referral_count,
+        is_active: profile.is_active,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at
+      })) || [];
 
-          return {
-            id: authUser.id,
-            email: authUser.email || 'غير محدد',
-            created_at: authUser.created_at,
-            last_sign_in_at: authUser.last_sign_in_at,
-            profile: profile ? {
-              display_name: profile.display_name,
-              wallet_balance: profile.wallet_balance,
-              total_earnings: profile.total_earnings,
-              referral_count: profile.referral_count,
-              is_active: profile.is_active
-            } : undefined,
-            subscription: subscription
-          };
-        })
-      );
-
-      setUsers(usersWithData);
-    } catch (error) {
+      setUsers(usersData);
+    } catch (error: any) {
       console.error('خطأ في جلب المستخدمين:', error);
-      toast.error('خطأ في جلب بيانات المستخدمين');
+      toast.error('خطأ في جلب بيانات المستخدمين: ' + (error.message || 'خطأ غير معروف'));
     }
   };
 
@@ -210,8 +184,8 @@ const AdminDashboard = () => {
       setSelectedTransaction(null);
       setAdminNotes('');
       
-      // إعادة تحميل البيانات بدلاً من إعادة تحميل الصفحة
-      await Promise.all([fetchUsers(), fetchProducts()]);
+      // إعادة تحميل البيانات
+      await Promise.all([refetchTransactions(), fetchUsers()]);
     } catch (error: any) {
       console.error('Error updating transaction:', error);
       toast.error('حدث خطأ أثناء تحديث المعاملة: ' + (error.message || 'خطأ غير معروف'));
@@ -231,10 +205,10 @@ const AdminDashboard = () => {
       if (error) throw error;
       
       toast.success(`تم ${!currentStatus ? 'تفعيل' : 'إلغاء تفعيل'} المستخدم`);
-      fetchUsers();
-    } catch (error) {
+      await fetchUsers();
+    } catch (error: any) {
       console.error('خطأ في تحديث حالة المستخدم:', error);
-      toast.error('حدث خطأ أثناء تحديث حالة المستخدم');
+      toast.error('حدث خطأ أثناء تحديث حالة المستخدم: ' + (error.message || 'خطأ غير معروف'));
     }
   };
 
@@ -250,7 +224,7 @@ const AdminDashboard = () => {
       if (error) throw error;
       
       toast.success(`تم شحن ${amount} د.ل للمستخدم بنجاح`);
-      await fetchUsers(); // إعادة تحميل البيانات
+      await fetchUsers();
       setSelectedUser(null);
       setManualBalanceAmount(0);
       setManualBalanceNotes('');
@@ -339,7 +313,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // إحصائيات شاملة
+  // إحصائيات محدثة
   const totalTransactions = transactions.length;
   const pendingTransactions = transactions.filter(t => t.status === 'pending').length;
   const totalAmount = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
@@ -348,7 +322,7 @@ const AdminDashboard = () => {
     .reduce((sum, t) => sum + (t.amount || 0), 0);
   
   const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.profile?.is_active).length;
+  const activeUsers = users.filter(u => u.is_active).length;
   const totalProfiles = profiles.length;
   const activeProfiles = profiles.filter(p => p.is_active).length;
 
@@ -363,8 +337,8 @@ const AdminDashboard = () => {
 
   const filteredUsers = users.filter(u =>
     searchTerm === '' || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u.profile?.display_name && u.profile.display_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (u.display_name && u.display_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -392,7 +366,7 @@ const AdminDashboard = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Stats Cards الشاملة */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="p-6 rounded-2xl border-border">
             <div className="flex items-center gap-4">
@@ -622,8 +596,7 @@ const AdminDashboard = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="arabic-body">البريد الإلكتروني</TableHead>
-                      <TableHead className="arabic-body">الاسم</TableHead>
+                      <TableHead className="arabic-body">المستخدم</TableHead>
                       <TableHead className="arabic-body">رصيد المحفظة</TableHead>
                       <TableHead className="arabic-body">الإحالات</TableHead>
                       <TableHead className="arabic-body">الحالة</TableHead>
@@ -634,40 +607,29 @@ const AdminDashboard = () => {
                     {filteredUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
-                          <div className="arabic-body text-foreground">{user.email}</div>
+                          <div className="arabic-body text-foreground">{user.display_name || user.email}</div>
                           <div className="text-xs text-muted-foreground">
                             انضم: {new Date(user.created_at).toLocaleDateString('ar')}
                           </div>
                         </TableCell>
-                        <TableCell className="arabic-body text-foreground">
-                          {user.profile?.display_name || 'غير محدد'}
-                        </TableCell>
                         <TableCell>
                           <div className="font-bold arabic-heading text-success">
-                            {user.profile?.wallet_balance?.toFixed(2) || '0.00'} د.ل
+                            {user.wallet_balance?.toFixed(2) || '0.00'} د.ل
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            أرباح: {user.profile?.total_earnings?.toFixed(2) || '0.00'} د.ل
+                            أرباح: {user.total_earnings?.toFixed(2) || '0.00'} د.ل
                           </div>
                         </TableCell>
                         <TableCell className="arabic-heading font-bold text-premium">
-                          {user.profile?.referral_count || 0}
+                          {user.referral_count || 0}
                         </TableCell>
-                         <TableCell>
-                           <Badge className={user.profile?.is_active ? 'bg-success text-white' : 'bg-destructive text-white'}>
-                             {user.profile?.is_active ? 'نشط' : 'معطل'}
-                           </Badge>
-                         </TableCell>
+                        <TableCell>
+                          <Badge className={user.is_active ? 'bg-success text-white' : 'bg-destructive text-white'}>
+                            {user.is_active ? 'نشط' : 'معطل'}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => toggleUserStatus(user.id, true)}
-                            >
-                              <Lock className="w-4 h-4" />
-                            </Button>
-                            
                             <Dialog>
                               <DialogTrigger asChild>
                                 <Button size="sm" variant="outline">
@@ -679,95 +641,93 @@ const AdminDashboard = () => {
                                   <DialogTitle className="arabic-heading">تفاصيل المستخدم</DialogTitle>
                                 </DialogHeader>
                                 <div className="space-y-4">
-                                   <div className="grid grid-cols-2 gap-4 mb-4">
-                                     <div>
-                                       <Label className="arabic-body text-sm">البريد الإلكتروني</Label>
-                                       <p className="text-foreground">{user.email}</p>
-                                     </div>
-                                     <div>
-                                       <Label className="arabic-body text-sm">الاسم</Label>
-                                       <p className="text-foreground">{user.profile?.display_name || 'غير محدد'}</p>
-                                     </div>
-                                     <div>
-                                       <Label className="arabic-body text-sm">رصيد المحفظة</Label>
-                                       <p className="text-success font-bold">{user.profile?.wallet_balance?.toFixed(2) || '0.00'} د.ل</p>
-                                     </div>
-                                     <div>
-                                       <Label className="arabic-body text-sm">إجمالي الأرباح</Label>
-                                       <p className="text-gold font-bold">{user.profile?.total_earnings?.toFixed(2) || '0.00'} د.ل</p>
-                                     </div>
-                                   </div>
-                                   
-                                   {/* قسم الشحن اليدوي */}
-                                   <div className="border rounded-lg p-4 bg-muted/10">
-                                     <h5 className="font-semibold mb-3 arabic-heading text-foreground">شحن رصيد يدوي</h5>
-                                     <div className="grid grid-cols-2 gap-4">
-                                       <div>
-                                         <Label className="arabic-body text-sm">المبلغ (د.ل)</Label>
-                                         <Input
-                                           type="number"
-                                           min="0"
-                                           step="0.01"
-                                           value={manualBalanceAmount}
-                                           onChange={(e) => setManualBalanceAmount(Number(e.target.value))}
-                                           placeholder="0.00"
-                                           className="arabic-body"
-                                         />
-                                       </div>
-                                       <div>
-                                         <Label className="arabic-body text-sm">ملاحظة (اختياري)</Label>
-                                         <Input
-                                           value={manualBalanceNotes}
-                                           onChange={(e) => setManualBalanceNotes(e.target.value)}
-                                           placeholder="ملاحظة الشحن..."
-                                           className="arabic-body"
-                                         />
-                                       </div>
-                                     </div>
-                                     <Button
-                                       className="w-full mt-3 bg-success hover:bg-success/90"
-                                       onClick={() => {
-                                         if (manualBalanceAmount > 0) {
-                                           addManualBalance(user.id, manualBalanceAmount, manualBalanceNotes);
-                                           setManualBalanceAmount(0);
-                                           setManualBalanceNotes('');
-                                         } else {
-                                           toast.error('يرجى إدخال مبلغ صحيح');
-                                         }
-                                       }}
-                                       disabled={manualBalanceAmount <= 0}
-                                     >
-                                       <Wallet className="w-4 h-4 ml-2" />
-                                       شحن الرصيد
-                                     </Button>
-                                   </div>
-                                   
-                                   <div className="flex gap-2 pt-4">
-                                     <Button
-                                       variant="outline"
-                                       onClick={() => toggleUserStatus(user.id, user.profile?.is_active || false)}
-                                       className={user.profile?.is_active ? "text-orange-600" : "text-success"}
-                                     >
-                                       {user.profile?.is_active ? (
-                                         <>
-                                           <Lock className="w-4 h-4 ml-2" />
-                                           تعطيل المستخدم
-                                         </>
-                                       ) : (
-                                         <>
-                                           <Unlock className="w-4 h-4 ml-2" />
-                                           تفعيل المستخدم
-                                         </>
-                                       )}
-                                     </Button>
-                                     <Button
-                                       variant="destructive"
-                                       onClick={() => deleteUser(user.id)}
-                                     >
-                                       <Trash2 className="w-4 h-4 ml-2" />
-                                       حذف المستخدم
-                                     </Button>
-                                   </div>
+                                  <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                      <Label className="arabic-body text-sm">الاسم</Label>
+                                      <p className="text-foreground">{user.display_name || 'غير محدد'}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="arabic-body text-sm">رصيد المحفظة</Label>
+                                      <p className="text-success font-bold">{user.wallet_balance?.toFixed(2) || '0.00'} د.ل</p>
+                                    </div>
+                                    <div>
+                                      <Label className="arabic-body text-sm">إجمالي الأرباح</Label>
+                                      <p className="text-gold font-bold">{user.total_earnings?.toFixed(2) || '0.00'} د.ل</p>
+                                    </div>
+                                    <div>
+                                      <Label className="arabic-body text-sm">عدد الإحالات</Label>
+                                      <p className="text-premium font-bold">{user.referral_count || 0}</p>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* قسم الشحن اليدوي */}
+                                  <div className="border rounded-lg p-4 bg-muted/10">
+                                    <h5 className="font-semibold mb-3 arabic-heading text-foreground">شحن رصيد يدوي</h5>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <Label className="arabic-body text-sm">المبلغ (د.ل)</Label>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          step="0.01"
+                                          value={manualBalanceAmount}
+                                          onChange={(e) => setManualBalanceAmount(Number(e.target.value))}
+                                          placeholder="0.00"
+                                          className="arabic-body"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label className="arabic-body text-sm">ملاحظة (اختياري)</Label>
+                                        <Input
+                                          value={manualBalanceNotes}
+                                          onChange={(e) => setManualBalanceNotes(e.target.value)}
+                                          placeholder="ملاحظة الشحن..."
+                                          className="arabic-body"
+                                        />
+                                      </div>
+                                    </div>
+                                    <Button
+                                      className="w-full mt-3 bg-success hover:bg-success/90"
+                                      onClick={() => {
+                                        if (manualBalanceAmount > 0) {
+                                          addManualBalance(user.id, manualBalanceAmount, manualBalanceNotes);
+                                        } else {
+                                          toast.error('يرجى إدخال مبلغ صحيح');
+                                        }
+                                      }}
+                                      disabled={manualBalanceAmount <= 0}
+                                    >
+                                      <Wallet className="w-4 h-4 ml-2" />
+                                      شحن الرصيد
+                                    </Button>
+                                  </div>
+                                  
+                                  <div className="flex gap-2 pt-4">
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => toggleUserStatus(user.id, user.is_active || false)}
+                                      className={user.is_active ? "text-orange-600" : "text-success"}
+                                    >
+                                      {user.is_active ? (
+                                        <>
+                                          <Lock className="w-4 h-4 ml-2" />
+                                          تعطيل المستخدم
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Unlock className="w-4 h-4 ml-2" />
+                                          تفعيل المستخدم
+                                        </>
+                                      )}
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => deleteUser(user.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4 ml-2" />
+                                      حذف المستخدم
+                                    </Button>
+                                  </div>
                                 </div>
                               </DialogContent>
                             </Dialog>

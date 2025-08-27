@@ -1,41 +1,35 @@
+
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Zap, Star, Sparkles } from "lucide-react";
+import { Check, Star, Zap, Crown } from "lucide-react";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const SubscriptionPlans = () => {
-  const { plans, userSubscription, currentPlan, createSubscription, loading } = useSubscriptions();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { plans, currentPlan, createSubscription, loading } = useSubscriptions();
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
 
-  const handleSubscribe = async (planId: string, planTier: string) => {
-    if (!user) {
-      toast({
-        title: "يجب تسجيل الدخول أولاً",
-        description: "يرجى تسجيل الدخول للاشتراك في الباقة",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handleSubscribe = async (planId: string) => {
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
 
-    // For free plan, subscribe immediately
+    console.log('محاولة الاشتراك في:', plan.name, 'السعر:', plan.price);
+
     if (plan.price === 0) {
+      // For free plans, activate immediately
       try {
         setProcessingPlan(planId);
+        console.log('تفعيل الباقة المجانية...');
         await createSubscription(planId, 'free');
         toast({
-          title: "تم الاشتراك بنجاح!",
-          description: "تم تفعيل الباقة المجانية"
+          title: "تم تفعيل الباقة المجانية!",
+          description: "يمكنك الآن الاستفادة من ميزات الباقة المجانية",
+          variant: "default"
         });
       } catch (error: any) {
+        console.error('خطأ في الاشتراك المجاني:', error);
         toast({
           title: "خطأ في الاشتراك",
           description: error.message,
@@ -45,19 +39,25 @@ const SubscriptionPlans = () => {
         setProcessingPlan(null);
       }
     } else {
-      // For paid plans, create subscription and redirect to payment
+      // For paid plans, create subscription record and notify user to deposit
       try {
         setProcessingPlan(planId);
+        console.log('إنشاء اشتراك مدفوع...');
+        
         await createSubscription(planId, 'pending');
+        
         toast({
           title: "تم إنشاء طلب الاشتراك!",
-          description: "يرجى إيداع مبلغ الاشتراك لتفعيل الباقة",
+          description: `يرجى إيداع مبلغ ${plan.price} ${plan.currency} لتفعيل باقة ${plan.name}. ستتم مراجعة طلبك من قبل الإدارة.`,
           variant: "default"
         });
+        
+        console.log('تم إنشاء طلب الاشتراك بنجاح');
       } catch (error: any) {
+        console.error('خطأ في الاشتراك المدفوع:', error);
         toast({
           title: "خطأ في الاشتراك",
-          description: error.message,
+          description: error.message || 'حدث خطأ غير متوقع',
           variant: "destructive"
         });
       } finally {
@@ -66,179 +66,162 @@ const SubscriptionPlans = () => {
     }
   };
 
-  const getIconComponent = (tier: string) => {
-    const icons = {
-      'free': Star,
-      'premium': Crown,
-      'business': Zap,
-      'super': Sparkles
-    };
-    return icons[tier as keyof typeof icons] || Star;
+  const getPlanIcon = (tier: string) => {
+    switch (tier) {
+      case 'free': return <Zap className="w-6 h-6" />;
+      case 'premium': return <Star className="w-6 h-6" />;
+      case 'business': return <Crown className="w-6 h-6" />;
+      case 'super': return <Crown className="w-6 h-6" />;
+      default: return <Zap className="w-6 h-6" />;
+    }
+  };
+
+  const getPlanColor = (tier: string) => {
+    switch (tier) {
+      case 'free': return 'bg-gradient-to-br from-gray-100 to-gray-200';
+      case 'premium': return 'bg-gradient-to-br from-blue-100 to-blue-200';
+      case 'business': return 'bg-gradient-to-br from-purple-100 to-purple-200';
+      case 'super': return 'bg-gradient-to-br from-yellow-100 to-yellow-200';
+      default: return 'bg-gradient-to-br from-gray-100 to-gray-200';
+    }
+  };
+
+  const isCurrentPlan = (planId: string) => {
+    return currentPlan?.id === planId;
   };
 
   if (loading) {
     return (
-      <section className="py-20 bg-gradient-to-b from-background to-muted/20" id="pricing">
-        <div className="container mx-auto px-4 text-center">
-          <div className="text-xl">جاري تحميل الباقات...</div>
-        </div>
-      </section>
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   return (
-    <section className="py-20 bg-gradient-to-b from-background to-muted/20" id="pricing">
-      <div className="container mx-auto px-4">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold mb-6 arabic-heading bg-gradient-to-r from-primary via-premium to-super bg-clip-text text-transparent">
-            خطط الاشتراك
+    <div className="py-12 px-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold arabic-heading text-foreground mb-4">
+            اختر الباقة المناسبة لك
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto arabic-body">
-            اختر الخطة المناسبة لك وابدأ رحلتك في عالم الملفات الاحترافية
+          <p className="text-xl text-muted-foreground arabic-body max-w-3xl mx-auto">
+            باقات متنوعة تلبي جميع احتياجاتك لإنشاء وإدارة ملفاتك الشخصية
           </p>
-          {currentPlan && (
-            <div className="mt-4 p-4 bg-primary/10 rounded-xl border border-primary/20 inline-block">
-              <p className="text-primary font-medium">
-                📍 باقتك الحالية: {currentPlan.name}
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* Plans Grid */}
-        <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-8 max-w-7xl mx-auto">
-          {plans.map((plan, index) => {
-            const IconComponent = getIconComponent(plan.tier);
-            const isCurrentPlan = currentPlan?.id === plan.id;
-            const features = Array.isArray(plan.features) ? plan.features : JSON.parse(plan.features || '[]');
-            const limitations = Array.isArray(plan.limitations) ? plan.limitations : JSON.parse(plan.limitations || '[]');
-            
-            return (
-              <Card 
-                key={plan.id}
-                className={`relative p-8 rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-2xl ${
-                  plan.tier === 'premium'
-                    ? 'border-premium shadow-xl bg-gradient-to-b from-white to-premium/5' 
-                    : plan.tier === 'super'
-                    ? 'border-super shadow-xl bg-gradient-to-b from-white to-super/5'
-                    : isCurrentPlan
-                    ? 'border-success shadow-xl bg-gradient-to-b from-white to-success/5'
-                    : 'border-gray-200 hover:border-primary/30'
-                } ${plan.tier === 'super' ? 'animate-glow' : ''}`}
-                style={{ animationDelay: `${index * 0.2}s` }}
-              >
-                {/* Popular Badge */}
-                {plan.tier === 'premium' && (
-                  <Badge className="absolute -top-4 right-4 bg-gradient-to-r from-premium to-purple-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-                    الأكثر شعبية
-                  </Badge>
-                )}
-
-                {/* Super Badge */}
-                {plan.tier === 'super' && (
-                  <Badge className="absolute -top-4 right-4 bg-gradient-to-r from-super to-pink-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg animate-pulse">
-                    💥 خارق
-                  </Badge>
-                )}
-
-                {/* Current Plan Badge */}
-                {isCurrentPlan && (
-                  <Badge className="absolute -top-4 right-4 bg-gradient-to-r from-success to-green-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-                    ✓ باقتك الحالية
-                  </Badge>
-                )}
-
-                {/* Plan Header */}
-                <div className="text-center mb-8">
-                  <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${
-                    plan.tier === 'premium' ? 'from-premium to-purple-600' :
-                    plan.tier === 'business' ? 'from-business to-blue-600' :
-                    plan.tier === 'super' ? 'from-super to-pink-600' :
-                    'from-gray-400 to-gray-600'
-                  } flex items-center justify-center ${plan.tier === 'super' ? 'animate-glow' : ''}`}>
-                    <IconComponent className="w-8 h-8 text-white" />
-                  </div>
-                  
-                  <h3 className="text-2xl font-bold mb-2 arabic-heading">{plan.name}</h3>
-                  <p className="text-muted-foreground arabic-body text-sm mb-4">{plan.description}</p>
-                  
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold arabic-heading">{plan.price}</span>
-                    <span className="text-lg text-muted-foreground mr-1">{plan.currency}</span>
-                    <div className="text-sm text-muted-foreground arabic-body">{plan.period}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {plans.map((plan) => (
+            <Card 
+              key={plan.id} 
+              className={`relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-xl ${
+                isCurrentPlan(plan.id) ? 'ring-2 ring-primary shadow-lg' : ''
+              }`}
+            >
+              <div className={`h-2 ${getPlanColor(plan.tier)}`} />
+              
+              <CardHeader className="text-center pb-4">
+                <div className="flex items-center justify-center mb-3">
+                  <div className={`p-3 rounded-full ${getPlanColor(plan.tier)} text-foreground`}>
+                    {getPlanIcon(plan.tier)}
                   </div>
                 </div>
-
-                {/* Features List */}
-                <div className="space-y-3 mb-8">
-                  {features.map((feature: string) => (
-                    <div key={feature} className="flex items-center gap-3">
-                      <div className={`w-5 h-5 rounded-full bg-gradient-to-r ${
-                        plan.tier === 'premium' ? 'from-premium to-purple-600' :
-                        plan.tier === 'business' ? 'from-business to-blue-600' :
-                        plan.tier === 'super' ? 'from-super to-pink-600' :
-                        'from-gray-400 to-gray-600'
-                      } flex items-center justify-center flex-shrink-0`}>
-                        <Check className="w-3 h-3 text-white" />
-                      </div>
-                      <span className="text-sm arabic-body">{feature}</span>
-                    </div>
-                  ))}
-                  
-                  {limitations.map((limitation: string) => (
-                    <div key={limitation} className="flex items-center gap-3 opacity-60">
-                      <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
-                        <span className="w-3 h-3 text-gray-500">×</span>
-                      </div>
-                      <span className="text-sm arabic-body text-muted-foreground">{limitation}</span>
-                    </div>
-                  ))}
+                
+                <CardTitle className="text-2xl font-bold arabic-heading text-foreground">
+                  {plan.name}
+                </CardTitle>
+                
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <span className="text-3xl font-bold arabic-heading text-foreground">
+                    {plan.price}
+                  </span>
+                  <span className="text-lg text-muted-foreground arabic-body">
+                    {plan.currency}
+                  </span>
+                  <span className="text-sm text-muted-foreground arabic-body">
+                    /{plan.period === 'monthly' ? 'شهر' : 'سنة'}
+                  </span>
                 </div>
 
-                {/* CTA Button */}
-                {isCurrentPlan ? (
-                  <Button 
-                    disabled
-                    className="w-full py-6 rounded-xl font-bold text-lg bg-success/20 text-success border border-success/30"
-                  >
-                    ✓ الباقة النشطة
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={() => handleSubscribe(plan.id, plan.tier)}
-                    disabled={processingPlan === plan.id}
-                    className={`w-full py-6 rounded-xl font-bold text-lg transition-all duration-300 ${
-                      plan.tier === 'premium'
-                        ? 'bg-gradient-to-r from-premium to-purple-600 hover:from-purple-600 hover:to-premium text-white shadow-lg hover:shadow-xl hover:scale-105' 
-                        : plan.tier === 'super'
-                        ? 'bg-gradient-to-r from-super to-pink-600 hover:from-pink-600 hover:to-super text-white shadow-lg hover:shadow-xl hover:scale-105 animate-pulse'
-                        : plan.tier === 'business'
-                        ? 'bg-gradient-to-r from-business to-blue-600 hover:from-blue-600 hover:to-business text-white shadow-lg hover:shadow-xl hover:scale-105'
-                        : 'border-2 border-primary/20 hover:border-primary/40 bg-white hover:bg-primary/5'
-                    }`}
-                  >
-                    {processingPlan === plan.id 
-                      ? 'جاري المعالجة...' 
-                      : user 
-                        ? (plan.price === 0 ? 'ابدأ مجاناً' : 'اشترك الآن')
-                        : 'سجل دخول للاشتراك'
-                    }
-                  </Button>
+                {isCurrentPlan(plan.id) && (
+                  <Badge className="bg-primary text-white mt-2">
+                    الباقة الحالية
+                  </Badge>
                 )}
-              </Card>
-            );
-          })}
+              </CardHeader>
+
+              <CardContent className="pb-6">
+                <CardDescription className="text-center mb-6 arabic-body text-muted-foreground">
+                  {plan.description}
+                </CardDescription>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-success" />
+                    <span className="text-sm arabic-body text-foreground">
+                      {plan.max_profiles} ملف شخصي
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-success" />
+                    <span className="text-sm arabic-body text-foreground">
+                      {plan.max_templates} قالب متاح
+                    </span>
+                  </div>
+
+                  {plan.features && Array.isArray(plan.features) && plan.features.map((feature: string, index: number) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-success" />
+                      <span className="text-sm arabic-body text-foreground">
+                        {feature}
+                      </span>
+                    </div>
+                  ))}
+
+                  {plan.referral_percentage > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-success" />
+                      <span className="text-sm arabic-body text-foreground">
+                        عمولة إحالة {plan.referral_percentage}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+
+              <CardFooter>
+                <Button 
+                  className="w-full rounded-lg"
+                  onClick={() => handleSubscribe(plan.id)}
+                  disabled={isCurrentPlan(plan.id) || processingPlan === plan.id || loading}
+                  variant={isCurrentPlan(plan.id) ? "outline" : "default"}
+                >
+                  {processingPlan === plan.id ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      جاري المعالجة...
+                    </div>
+                  ) : isCurrentPlan(plan.id) ? (
+                    "الباقة الحالية"
+                  ) : plan.price === 0 ? (
+                    "تفعيل مجاني"
+                  ) : (
+                    `اشترك الآن - ${plan.price} ${plan.currency}`
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
         </div>
 
-        {/* Additional Info */}
-        <div className="text-center mt-12 p-6 bg-gradient-to-r from-primary/5 to-premium/5 rounded-2xl border border-primary/10">
+        <div className="mt-12 text-center">
           <p className="text-muted-foreground arabic-body">
-            🎯 جميع الخطط تشمل ضمان استرداد المال خلال 30 يوماً | 🔒 دفع آمن 100% | 🚀 تفعيل فوري
+            جميع الباقات تشمل دعم فني على مدار الساعة • ضمان استرداد المال خلال 30 يوم
           </p>
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 

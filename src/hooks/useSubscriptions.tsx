@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,7 +29,7 @@ interface UserSubscription {
   started_at: string;
   expires_at: string | null;
   payment_method: string | null;
-  subscription_plan?: any;
+  subscription_plan?: SubscriptionPlan;
 }
 
 export const useSubscriptions = () => {
@@ -39,13 +40,19 @@ export const useSubscriptions = () => {
 
   const fetchPlans = async () => {
     try {
+      console.log('جاري جلب باقات الاشتراك...');
       const { data, error } = await supabase
         .from('subscription_plans')
         .select('*')
         .eq('is_active', true)
         .order('price', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('خطأ في جلب الباقات:', error);
+        throw error;
+      }
+      
+      console.log('تم جلب الباقات بنجاح:', data?.length);
       setPlans(data || []);
     } catch (error) {
       console.error('Error fetching subscription plans:', error);
@@ -53,9 +60,13 @@ export const useSubscriptions = () => {
   };
 
   const fetchUserSubscription = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('المستخدم غير مسجل الدخول');
+      return;
+    }
 
     try {
+      console.log('جاري جلب اشتراك المستخدم...');
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select(`
@@ -64,9 +75,14 @@ export const useSubscriptions = () => {
         `)
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error && error.code !== 'PGRST116') {
+        console.error('خطأ في جلب الاشتراك:', error);
+        throw error;
+      }
+
+      console.log('بيانات الاشتراك:', data);
       setUserSubscription(data);
     } catch (error) {
       console.error('Error fetching user subscription:', error);
@@ -74,38 +90,94 @@ export const useSubscriptions = () => {
   };
 
   const createSubscription = async (planId: string, paymentMethod: string, transactionId?: string) => {
-    if (!user) throw new Error('User not authenticated');
+    if (!user) {
+      console.error('المستخدم غير مسجل الدخول');
+      throw new Error('يرجى تسجيل الدخول أولاً');
+    }
+
+    console.log('إنشاء اشتراك جديد:', { planId, paymentMethod, userId: user.id });
 
     const plan = plans.find(p => p.id === planId);
-    if (!plan) throw new Error('Plan not found');
+    if (!plan) {
+      console.error('الباقة غير موجودة:', planId);
+      throw new Error('الباقة غير موجودة');
+    }
 
-    const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
+    console.log('بيانات الباقة:', plan);
 
-    const { data, error } = await supabase
-      .from('user_subscriptions')
-      .insert({
+    try {
+      // إنهاء أي اشتراك نشط حالي
+      if (userSubscription) {
+        console.log('إنهاء الاشتراك الحالي...');
+        await supabase
+          .from('user_subscriptions')
+          .update({ status: 'inactive' })
+          .eq('user_id', user.id)
+          .eq('status', 'active');
+      }
+
+      // إنشاء الاشتراك الجديد
+      const subscriptionData: any = {
         user_id: user.id,
         subscription_plan_id: planId,
         status: plan.price === 0 ? 'active' : 'pending',
-        expires_at: plan.price === 0 ? null : expiresAt.toISOString(),
         payment_method: paymentMethod,
-        transaction_id: transactionId
-      })
-      .select()
-      .single();
+        started_at: new Date().toISOString()
+      };
 
-    if (error) throw error;
-    
-    await fetchUserSubscription();
-    return data;
+      // إضافة تاريخ انتهاء للباقات المدفوعة
+      if (plan.price > 0) {
+        const expiresAt = new Date();
+        if (plan.period === 'monthly') {
+          expiresAt.setMonth(expiresAt.getMonth() + 1);
+        } else if (plan.period === 'yearly') {
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        }
+        subscriptionData.expires_at = expiresAt.toISOString();
+      }
+
+      if (transactionId) {
+        subscriptionData.transaction_id = transactionId;
+      }
+
+      console.log('بيانات الاشتراك الجديد:', subscriptionData);
+
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .insert(subscriptionData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('خطأ في إنشاء الاشتراك:', error);
+        throw error;
+      }
+
+      console.log('تم إنشاء الاشتراك بنجاح:', data);
+      
+      // تحديث البيانات المحلية
+      await fetchUserSubscription();
+      return data;
+    } catch (error: any) {
+      console.error('خطأ في createSubscription:', error);
+      throw new Error(error.message || 'حدث خطأ أثناء إنشاء الاشتراك');
+    }
   };
 
   const getCurrentPlan = () => {
     if (!userSubscription?.subscription_plan) {
+      // إرجاع الباقة المجانية كافتراضية
       return plans.find(p => p.tier === 'free') || null;
     }
-    return userSubscription.subscription_plan as SubscriptionPlan;
+    
+    // التأكد من أن subscription_plan هو كائن وليس string
+    if (typeof userSubscription.subscription_plan === 'object') {
+      return userSubscription.subscription_plan as SubscriptionPlan;
+    }
+    
+    // إذا كان subscription_plan هو ID، البحث عن الباقة في القائمة
+    const planId = userSubscription.subscription_plan as unknown as string;
+    return plans.find(p => p.id === planId) || plans.find(p => p.tier === 'free') || null;
   };
 
   const canAccessTemplate = (templateTier: string) => {
@@ -132,11 +204,19 @@ export const useSubscriptions = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([
-        fetchPlans(),
-        fetchUserSubscription()
-      ]);
-      setLoading(false);
+      console.log('تحميل بيانات الاشتراكات...');
+      
+      try {
+        await fetchPlans();
+        if (user) {
+          await fetchUserSubscription();
+        }
+      } catch (error) {
+        console.error('خطأ في تحميل البيانات:', error);
+      } finally {
+        setLoading(false);
+        console.log('انتهى تحميل البيانات');
+      }
     };
 
     loadData();
