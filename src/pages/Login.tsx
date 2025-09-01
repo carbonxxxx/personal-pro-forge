@@ -17,6 +17,7 @@ const Login = () => {
     password: "",
     confirmPassword: "",
     name: "",
+    phoneNumber: "",
     referralCode: ""
   });
 
@@ -67,7 +68,7 @@ const Login = () => {
           return;
         }
 
-        await signUp(formData.email, formData.password, formData.name, formData.referralCode);
+        await signUp(formData.email, formData.password, formData.name, formData.phoneNumber, formData.referralCode);
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -212,6 +213,25 @@ const Login = () => {
                     required={!isLogin}
                   />
                   <Lock className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber" className="arabic-body font-medium">رقم الهاتف</Label>
+                <div className="relative">
+                  <Input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    type="tel"
+                    placeholder="أدخل رقم الهاتف"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    className="rounded-xl border-gray-200 focus:border-primary/40 focus:ring-primary/20 h-12 pr-12"
+                    required={!isLogin}
+                  />
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                    📞
+                  </div>
                 </div>
               </div>
 

@@ -12,6 +12,7 @@ import ProfileView from "./pages/ProfileView";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminLogin from "./pages/AdminLogin";
 import ProductsManager from "./pages/ProductsManager";
+import SubscriptionSelection from "./pages/SubscriptionSelection";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/subscription-selection" element={<SubscriptionSelection />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/create-profile" element={<CreateProfile />} />
             <Route path="/admin-login" element={<AdminLogin />} />

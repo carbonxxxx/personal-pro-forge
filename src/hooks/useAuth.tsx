@@ -8,7 +8,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, displayName?: string, referralCode?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, displayName?: string, phoneNumber?: string, referralCode?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   cleanupAuthState: () => void;
 }
@@ -131,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, displayName?: string, referralCode?: string) => {
+  const signUp = async (email: string, password: string, displayName?: string, phoneNumber?: string, referralCode?: string) => {
     try {
       // Clean up existing state
       cleanupAuthState();
@@ -143,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Global signout failed:', err);
       }
 
-      const redirectUrl = `${window.location.origin}/dashboard`;
+      const redirectUrl = `${window.location.origin}/subscription-selection`;
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -152,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           emailRedirectTo: redirectUrl,
           data: {
             display_name: displayName,
+            phone_number: phoneNumber,
             referral_code: referralCode,
           }
         }
@@ -185,7 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Force page redirect
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          window.location.href = '/subscription-selection';
         }, 1000);
       }
 

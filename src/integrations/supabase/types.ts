@@ -149,54 +149,66 @@ export type Database = {
           bio: string | null
           created_at: string
           display_name: string | null
+          email_confirmed: boolean | null
           id: string
           is_active: boolean | null
           phone: string | null
+          phone_number: string | null
           referral_code: string
           referral_count: number | null
           referred_by: string | null
           reserved_balance: number | null
+          subscription_step_completed: boolean | null
           total_earnings: number | null
           updated_at: string
           user_id: string
           username: string | null
           wallet_balance: number | null
+          welcome_bonus_claimed: boolean | null
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          email_confirmed?: boolean | null
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          phone_number?: string | null
           referral_code: string
           referral_count?: number | null
           referred_by?: string | null
           reserved_balance?: number | null
+          subscription_step_completed?: boolean | null
           total_earnings?: number | null
           updated_at?: string
           user_id: string
           username?: string | null
           wallet_balance?: number | null
+          welcome_bonus_claimed?: boolean | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          email_confirmed?: boolean | null
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          phone_number?: string | null
           referral_code?: string
           referral_count?: number | null
           referred_by?: string | null
           reserved_balance?: number | null
+          subscription_step_completed?: boolean | null
           total_earnings?: number | null
           updated_at?: string
           user_id?: string
           username?: string | null
           wallet_balance?: number | null
+          welcome_bonus_claimed?: boolean | null
         }
         Relationships: [
           {

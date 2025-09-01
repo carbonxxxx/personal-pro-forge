@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,15 +29,26 @@ import { useProfile } from "@/hooks/useProfile";
 import { useUserProfiles } from "@/hooks/useUserProfiles";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { usePayments } from "@/hooks/usePayments";
+import SubscriptionPlans from "@/components/SubscriptionPlans";
+import SubscriptionManagement from "@/components/SubscriptionManagement";
+import EmailConfirmationModal from "@/components/EmailConfirmationModal";
 import { PaymentForm, TransactionsList } from "@/components/PaymentForms";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [showEmailConfirm, setShowEmailConfirm] = useState(false);
   const { user, signOut } = useAuth();
   const { profile, transactions, referralEarnings, stats, loading } = useProfile();
   const { profiles, loading: profilesLoading } = useUserProfiles();
   const { currentPlan } = useSubscriptions();
   const { transactions: paymentTransactions } = usePayments();
+
+  // Show email confirmation modal for new users
+  useEffect(() => {
+    if (user && profile && !(profile as any).email_confirmed && !(profile as any).welcome_bonus_claimed) {
+      setShowEmailConfirm(true);
+    }
+  }, [user, profile]);
 
   if (loading) {
     return (
@@ -101,7 +112,7 @@ const Dashboard = () => {
     { id: "earnings", name: "الأرباح", icon: DollarSign },
     { id: "wallet", name: "المحفظة", icon: Wallet },
     { id: "referrals", name: "الإحالات", icon: Users },
-    { id: "settings", name: "الإعدادات", icon: Settings }
+    { id: "subscriptions", name: "الاشتراكات", icon: Crown },
   ];
 
   return (
@@ -178,13 +189,16 @@ const Dashboard = () => {
                   <p className="text-muted-foreground arabic-body mb-6">
                     إليك نظرة عامة على أداء ملفاتك الشخصية وأرباحك
                   </p>
-                  <div className="flex gap-4">
-                    <Link to="/create-profile">
-                      <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <Plus className="w-5 h-5 ml-2" />
-                        إنشاء ملف جديد
-                      </Button>
-                    </Link>
+              <div className="flex gap-2">
+                <Link to="/create-profile">
+                  <Button 
+                    className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                    disabled={currentPlan && profiles.length >= (currentPlan.max_profiles || 1)}
+                  >
+                    <Plus className="w-5 h-5 ml-2" />
+                    إنشاء ملف جديد
+                  </Button>
+                </Link>
                     {profile && (
                       <div className="flex items-center gap-2 px-4 py-2 bg-white/80 rounded-xl border">
                         <span className="text-sm text-muted-foreground arabic-body">كود الإحالة:</span>
@@ -520,6 +534,19 @@ const Dashboard = () => {
               </>
             )}
 
+            {activeTab === "subscriptions" && (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold arabic-heading">إدارة الاشتراكات</h2>
+                    <p className="text-muted-foreground arabic-body">اختر خطة تناسب احتياجاتك</p>
+                  </div>
+                </div>
+
+                <SubscriptionManagement />
+              </>
+            )}
+
             {activeTab === "settings" && (
               <>
                 <div>
@@ -583,6 +610,19 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Email Confirmation Modal */}
+      {showEmailConfirm && user?.email && (
+        <EmailConfirmationModal
+          isOpen={showEmailConfirm}
+          onClose={() => setShowEmailConfirm(false)}
+          userEmail={user.email}
+          onConfirmationComplete={() => {
+            // Refresh profile data after confirmation
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 };

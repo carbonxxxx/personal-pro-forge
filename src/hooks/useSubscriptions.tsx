@@ -90,77 +90,90 @@ export const useSubscriptions = () => {
   };
 
   const createSubscription = async (planId: string, paymentMethod: string, transactionId?: string) => {
-    if (!user) {
-      console.error('المستخدم غير مسجل الدخول');
-      throw new Error('يرجى تسجيل الدخول أولاً');
-    }
-
-    console.log('إنشاء اشتراك جديد:', { planId, paymentMethod, userId: user.id });
-
-    const plan = plans.find(p => p.id === planId);
-    if (!plan) {
-      console.error('الباقة غير موجودة:', planId);
-      throw new Error('الباقة غير موجودة');
-    }
-
-    console.log('بيانات الباقة:', plan);
-
+    if (!user) throw new Error('User not authenticated');
+    
+    setLoading(true);
     try {
-      // إنهاء أي اشتراك نشط حالي
-      if (userSubscription) {
-        console.log('إنهاء الاشتراك الحالي...');
-        await supabase
-          .from('user_subscriptions')
-          .update({ status: 'inactive' })
-          .eq('user_id', user.id)
-          .eq('status', 'active');
+      // Get the subscription plan details
+      const plan = plans.find(p => p.id === planId);
+      if (!plan) throw new Error('Plan not found');
+
+      // If paying with wallet, handle wallet deduction
+      if (paymentMethod === 'wallet' && plan.price > 0) {
+        // Create withdrawal transaction using cash type for internal wallet payment
+        const { error: withdrawalError } = await supabase
+          .from('wallet_transactions')
+          .insert({
+            user_id: user.id,
+            transaction_type: 'withdrawal',
+            amount: plan.price,
+            currency: 'LYD',
+            payment_method: 'cash', // Use cash as closest match for internal wallet
+            status: 'approved',
+            reference_number: `SUBSCRIPTION_${Date.now()}`,
+            admin_notes: `اشتراك في خطة ${plan.name} - دفع من المحفظة`
+          });
+
+        if (withdrawalError) throw withdrawalError;
       }
 
-      // إنشاء الاشتراك الجديد
-      const subscriptionData: any = {
-        user_id: user.id,
-        subscription_plan_id: planId,
-        status: plan.price === 0 ? 'active' : 'pending',
-        payment_method: paymentMethod,
-        started_at: new Date().toISOString()
-      };
-
-      // إضافة تاريخ انتهاء للباقات المدفوعة
-      if (plan.price > 0) {
-        const expiresAt = new Date();
-        if (plan.period === 'monthly') {
-          expiresAt.setMonth(expiresAt.getMonth() + 1);
-        } else if (plan.period === 'yearly') {
-          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-        }
-        subscriptionData.expires_at = expiresAt.toISOString();
+      // Deactivate any existing active subscription
+      const { error: deactivateError } = await supabase
+        .from('user_subscriptions')
+        .update({ status: 'cancelled' })
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+      
+      if (deactivateError) throw deactivateError;
+      
+      // Calculate expiry date based on plan period
+      const now = new Date();
+      let expiryDate = new Date();
+      
+      switch (plan.period) {
+        case 'monthly':
+          expiryDate.setMonth(now.getMonth() + 1);
+          break;
+        case '3_months':
+          expiryDate.setMonth(now.getMonth() + 3);
+          break;
+        case '6_months':
+          expiryDate.setMonth(now.getMonth() + 6);
+          break;
+        case 'yearly':
+          expiryDate.setFullYear(now.getFullYear() + 1);
+          break;
+        default:
+          expiryDate.setMonth(now.getMonth() + 1);
       }
-
-      if (transactionId) {
-        subscriptionData.transaction_id = transactionId;
-      }
-
-      console.log('بيانات الاشتراك الجديد:', subscriptionData);
-
+      
+      // Create new subscription
       const { data, error } = await supabase
         .from('user_subscriptions')
-        .insert(subscriptionData)
+        .insert({
+          user_id: user.id,
+          subscription_plan_id: planId,
+          payment_method: paymentMethod,
+          transaction_id: transactionId,
+          status: 'active',
+          started_at: now.toISOString(),
+          expires_at: expiryDate.toISOString()
+        })
         .select()
         .single();
+        
+      if (error) throw error;
 
-      if (error) {
-        console.error('خطأ في إنشاء الاشتراك:', error);
-        throw error;
-      }
-
-      console.log('تم إنشاء الاشتراك بنجاح:', data);
+      // Mark subscription step as completed
+      await supabase
+        .from('profiles')
+        .update({ subscription_step_completed: true })
+        .eq('user_id', user.id);
       
-      // تحديث البيانات المحلية
       await fetchUserSubscription();
       return data;
-    } catch (error: any) {
-      console.error('خطأ في createSubscription:', error);
-      throw new Error(error.message || 'حدث خطأ أثناء إنشاء الاشتراك');
+    } finally {
+      setLoading(false);
     }
   };
 
