@@ -24,6 +24,7 @@ const SubscriptionSelection = () => {
   const freePlans = plans.filter(plan => plan.tier === 'free');
   const premiumPlans = plans.filter(plan => plan.tier === 'premium');
   const businessPlans = plans.filter(plan => plan.tier === 'business');
+  const superPlans = plans.filter(plan => plan.tier === 'super');
 
   const handlePlanSelect = async (planId: string, planPrice: number) => {
     if (!user) return;
@@ -97,6 +98,7 @@ const SubscriptionSelection = () => {
       case 'free': return <Crown className="w-6 h-6" />;
       case 'premium': return <Star className="w-6 h-6" />;
       case 'business': return <Zap className="w-6 h-6" />;
+      case 'super': return <Sparkles className="w-6 h-6" />;
       default: return <Crown className="w-6 h-6" />;
     }
   };
@@ -106,6 +108,7 @@ const SubscriptionSelection = () => {
       case 'free': return 'from-gray-400 to-gray-600';
       case 'premium': return 'from-primary to-premium';
       case 'business': return 'from-business to-blue-600';
+      case 'super': return 'from-purple-500 to-pink-600';
       default: return 'from-gray-400 to-gray-600';
     }
   };
@@ -288,6 +291,7 @@ const SubscriptionSelection = () => {
           {freePlans.length > 0 && renderPlanGroup(freePlans, "الخطة المجانية", "free")}
           {premiumPlans.length > 0 && renderPlanGroup(premiumPlans, "الخطط المميزة", "premium")}
           {businessPlans.length > 0 && renderPlanGroup(businessPlans, "خطط الأعمال", "business")}
+          {superPlans.length > 0 && renderPlanGroup(superPlans, "الخطط الخارقة", "super")}
         </div>
 
         <div className="text-center mt-8">

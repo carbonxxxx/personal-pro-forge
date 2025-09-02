@@ -52,14 +52,24 @@ const EmailConfirmationModal = ({ isOpen, onClose, userEmail, onConfirmationComp
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error('المستخدم غير موجود');
 
-      // إضافة المكافأة مباشرة للمحفظة
-      const { error } = await supabase.rpc('add_manual_balance', {
-        target_user_id: user.id,
-        amount: 5,
-        admin_notes: 'مكافأة ترحيب - تأكيد البريد الإلكتروني'
-      });
+      // التحقق من حالة المستخدم الحالية
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email_confirmed, welcome_bonus_claimed')
+        .eq('user_id', user.id)
+        .single();
 
-      if (error) throw error;
+      // إذا كان المستخدم لم يحصل على المكافأة من قبل
+      if (!profile?.welcome_bonus_claimed) {
+        // إضافة المكافأة مباشرة للمحفظة
+        const { error } = await supabase.rpc('add_manual_balance', {
+          target_user_id: user.id,
+          amount: 5,
+          admin_notes: 'مكافأة ترحيب - تأكيد البريد الإلكتروني'
+        });
+
+        if (error) throw error;
+      }
 
       // تحديث حالة تأكيد البريد الإلكتروني
       await supabase
@@ -72,7 +82,9 @@ const EmailConfirmationModal = ({ isOpen, onClose, userEmail, onConfirmationComp
 
       toast({
         title: "تهانينا! 🎉",
-        description: "تم إضافة 5 دينار ليبي لمحفظتك كمكافأة ترحيب",
+        description: profile?.welcome_bonus_claimed 
+          ? "تم تأكيد بريدك الإلكتروني بنجاح"
+          : "تم إضافة 5 دينار ليبي لمحفظتك كمكافأة ترحيب",
       });
 
       onConfirmationComplete();

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscriptions } from '@/hooks/useSubscriptions';
 
 interface UserProfile {
   id: string;
@@ -36,6 +37,7 @@ interface ProfileData {
 
 export const useUserProfiles = () => {
   const { user } = useAuth();
+  const { currentPlan } = useSubscriptions();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,8 +63,30 @@ export const useUserProfiles = () => {
     }
   };
 
+  const canCreateProfile = () => {
+    if (!currentPlan) return false;
+    
+    const profileCount = profiles?.length || 0;
+    return profileCount < currentPlan.max_profiles;
+  };
+
+  const canAccessTemplate = (templateTier: string) => {
+    if (!currentPlan) return templateTier === 'free';
+
+    const tierHierarchy = { free: 0, premium: 1, business: 2, super: 3 };
+    const currentTierLevel = tierHierarchy[currentPlan.tier as keyof typeof tierHierarchy] || 0;
+    const templateTierLevel = tierHierarchy[templateTier as keyof typeof tierHierarchy] || 0;
+
+    return currentTierLevel >= templateTierLevel;
+  };
+
   const createProfile = async (templateId: string, profileData: ProfileData, customUrl?: string) => {
     if (!user) throw new Error('User not authenticated');
+
+    // التحقق من قدرة المستخدم على إنشاء ملف جديد
+    if (!canCreateProfile()) {
+      throw new Error(`تجاوزت العدد المسموح من الملفات الشخصية (${currentPlan?.max_profiles || 1}). يرجى ترقية اشتراكك.`);
+    }
 
     // Check if custom URL is available
     if (customUrl) {
@@ -236,6 +260,8 @@ export const useUserProfiles = () => {
     toggleProfileStatus,
     getProfileByUrl,
     checkUrlAvailability,
+    canCreateProfile,
+    canAccessTemplate,
     refetch: fetchProfiles
   };
 };

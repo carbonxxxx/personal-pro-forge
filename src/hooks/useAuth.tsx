@@ -45,18 +45,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (event === 'SIGNED_OUT') {
-          cleanupAuthState();
-        }
-        
-        setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', { event, session: !!session });
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        setTimeout(async () => {
+          // جلب بيانات الملف الشخصي
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (profileData) {
+            // التحقق من حاجة المستخدم لاختيار اشتراك
+            if (!profileData.subscription_step_completed) {
+              console.log('Redirecting to subscription selection...');
+              window.location.href = '/subscription-selection';
+            } else {
+              console.log('Redirecting to dashboard...');
+              window.location.href = '/dashboard';
+            }
+          }
+        }, 100);
       }
-    );
+      
+      if (event === 'SIGNED_OUT') {
+        console.log('User signed out, redirecting to home...');
+        cleanupAuthState();
+        window.location.href = '/';
+      }
+      
+      setLoading(false);
+    });
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
