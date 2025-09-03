@@ -227,29 +227,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      // Clean up auth state
       cleanupAuthState();
-      
-      // Attempt global sign out
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (err) {
-        console.log('Global signout failed:', err);
-      }
+      await supabase.auth.signOut({ scope: 'global' });
       
       toast({
         title: "تم تسجيل الخروج",
         description: "نراك قريباً!",
       });
       
-      // Force page reload for a clean state
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1000);
     } catch (error) {
       console.error('Error signing out:', error);
-      // Force redirect anyway
-      window.location.href = '/';
     }
   };
 

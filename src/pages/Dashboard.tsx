@@ -193,7 +193,7 @@ const Dashboard = () => {
                 <Link to="/create-profile">
                   <Button 
                     className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                    disabled={currentPlan && profiles.length >= (currentPlan.max_profiles || 1)}
+                    disabled={profiles.length >= ((currentPlan?.max_profiles) || 1)}
                   >
                     <Plus className="w-5 h-5 ml-2" />
                     إنشاء ملف جديد
@@ -314,7 +314,9 @@ const Dashboard = () => {
                     <p className="text-muted-foreground arabic-body">إدارة وتحرير ملفاتك الاحترافية</p>
                   </div>
                   <Link to="/create-profile">
-                    <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                    <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                      disabled={profiles.length >= ((currentPlan?.max_profiles) || 1)}
+                    >
                       <Plus className="w-5 h-5 ml-2" />
                       إنشاء ملف جديد
                     </Button>

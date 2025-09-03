@@ -256,13 +256,13 @@ const SubscriptionSelection = () => {
               >
                 إلغاء
               </Button>
-              <Button
-                className="flex-1 bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl text-white"
-                onClick={handlePaymentConfirm}
-                disabled={loading}
-              >
-                {loading ? "جاري المعالجة..." : "تأكيد الدفع"}
-              </Button>
+                   <Button
+                     className="flex-1 bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl text-white"
+                     onClick={handlePaymentConfirm}
+                     disabled={loading || (paymentMethod === 'wallet' && (profile?.wallet_balance || 0) < plan.price)}
+                   >
+                     {loading ? "جاري المعالجة..." : "تأكيد الدفع"}
+                   </Button>
             </div>
           </div>
         </Card>
@@ -298,9 +298,23 @@ const SubscriptionSelection = () => {
           <Button
             variant="ghost"
             className="text-muted-foreground hover:text-primary"
-            onClick={() => navigate('/dashboard')}
+            onClick={async () => {
+              // تفعيل الخطة المجانية تلقائياً عند التخطي
+              const freePlan = plans.find(p => p.tier === 'free' && p.period === 'monthly');
+              if (freePlan) {
+                try {
+                  await createSubscription(freePlan.id, 'free');
+                  navigate('/dashboard');
+                } catch (error) {
+                  console.error('Error activating free plan:', error);
+                  navigate('/dashboard');
+                }
+              } else {
+                navigate('/dashboard');
+              }
+            }}
           >
-            تخطي الآن (يمكنك الاختيار لاحقاً)
+            تخطي والمتابعة بالخطة المجانية
           </Button>
         </div>
       </div>

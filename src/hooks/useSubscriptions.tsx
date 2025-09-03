@@ -215,25 +215,35 @@ export const useSubscriptions = () => {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    
     const loadData = async () => {
+      if (!isMounted) return;
+      
       setLoading(true);
       console.log('تحميل بيانات الاشتراكات...');
       
       try {
         await fetchPlans();
-        if (user) {
+        if (user && isMounted) {
           await fetchUserSubscription();
         }
       } catch (error) {
         console.error('خطأ في تحميل البيانات:', error);
       } finally {
-        setLoading(false);
-        console.log('انتهى تحميل البيانات');
+        if (isMounted) {
+          setLoading(false);
+          console.log('انتهى تحميل البيانات');
+        }
       }
     };
 
     loadData();
-  }, [user]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]); // Only depend on user.id to prevent unnecessary reruns
 
   return {
     plans,
