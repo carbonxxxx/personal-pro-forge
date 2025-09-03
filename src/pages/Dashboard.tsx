@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,11 +38,20 @@ import { PaymentForm, TransactionsList } from "@/components/PaymentForms";
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [showEmailConfirm, setShowEmailConfirm] = useState(false);
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile, transactions, referralEarnings, stats, loading } = useProfile();
   const { profiles, loading: profilesLoading } = useUserProfiles();
   const { currentPlan } = useSubscriptions();
   const { transactions: paymentTransactions } = usePayments();
+
+  // Check if user needs to complete subscription step
+  useEffect(() => {
+    if (user && profile && !(profile as any).subscription_step_completed) {
+      navigate('/subscription-selection');
+      return;
+    }
+  }, [user, profile, navigate]);
 
   // Show email confirmation modal for new users
   useEffect(() => {

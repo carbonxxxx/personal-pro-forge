@@ -7,8 +7,8 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, displayName?: string, phoneNumber?: string, referralCode?: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, navigate?: (path: string) => void) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, displayName?: string, phoneNumber?: string, referralCode?: string, navigate?: (path: string) => void) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   cleanupAuthState: () => void;
 }
@@ -49,35 +49,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Auth state changed:', { event, session: !!session });
       setSession(session);
       setUser(session?.user ?? null);
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        setTimeout(async () => {
-          // جلب بيانات الملف الشخصي
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single();
-
-          if (profileData) {
-            // التحقق من حاجة المستخدم لاختيار اشتراك
-            if (!profileData.subscription_step_completed) {
-              console.log('Redirecting to subscription selection...');
-              window.location.href = '/subscription-selection';
-            } else {
-              console.log('Redirecting to dashboard...');
-              window.location.href = '/dashboard';
-            }
-          }
-        }, 100);
-      }
-      
-      if (event === 'SIGNED_OUT') {
-        console.log('User signed out, redirecting to home...');
-        cleanupAuthState();
-        window.location.href = '/';
-      }
-      
       setLoading(false);
     });
 
@@ -91,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, navigate?: (path: string) => void) => {
     try {
       // Clean up existing state
       cleanupAuthState();
@@ -135,11 +106,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "مرحباً بك!",
           description: "تم تسجيل الدخول بنجاح",
         });
-        
-        // Force page redirect
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1000);
+
+        // Check profile for subscription step
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .single();
+
+        if (navigate) {
+          if (profileData && !(profileData as any).subscription_step_completed) {
+            navigate('/subscription-selection');
+          } else {
+            navigate('/dashboard');
+          }
+        }
       }
 
       return { error: null };
@@ -154,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, displayName?: string, phoneNumber?: string, referralCode?: string) => {
+  const signUp = async (email: string, password: string, displayName?: string, phoneNumber?: string, referralCode?: string, navigate?: (path: string) => void) => {
     try {
       // Clean up existing state
       cleanupAuthState();
@@ -206,11 +187,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "تم إنشاء الحساب!",
           description: "مرحباً بك في برو فورج",
         });
-        
-        // Force page redirect
-        setTimeout(() => {
-          window.location.href = '/subscription-selection';
-        }, 1000);
+
+        if (navigate) {
+          navigate('/subscription-selection');
+        }
       }
 
       return { error: null };

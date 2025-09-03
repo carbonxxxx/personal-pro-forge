@@ -45,7 +45,7 @@ const Login = () => {
 
     try {
       if (isLogin) {
-        await signIn(formData.email, formData.password);
+        await signIn(formData.email, formData.password, navigate);
       } else {
         // Validation for signup
         if (formData.password !== formData.confirmPassword) {
@@ -68,7 +68,7 @@ const Login = () => {
           return;
         }
 
-        await signUp(formData.email, formData.password, formData.name, formData.phoneNumber, formData.referralCode);
+        await signUp(formData.email, formData.password, formData.name, formData.phoneNumber, formData.referralCode, navigate);
       }
     } catch (error) {
       console.error('Auth error:', error);
