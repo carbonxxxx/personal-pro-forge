@@ -30,6 +30,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useUserProfiles } from "@/hooks/useUserProfiles";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { usePayments } from "@/hooks/usePayments";
+import { useEmailConfirmation } from "@/hooks/useEmailConfirmation";
 import SubscriptionPlans from "@/components/SubscriptionPlans";
 import SubscriptionManagement from "@/components/SubscriptionManagement";
 import EmailConfirmationModal from "@/components/EmailConfirmationModal";
@@ -37,13 +38,13 @@ import { PaymentForm, TransactionsList } from "@/components/PaymentForms";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
-  const [showEmailConfirm, setShowEmailConfirm] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile, transactions, referralEarnings, stats, loading } = useProfile();
   const { profiles, loading: profilesLoading } = useUserProfiles();
   const { currentPlan } = useSubscriptions();
   const { transactions: paymentTransactions } = usePayments();
+  const { shouldShowModal, hideModal, onConfirmationComplete } = useEmailConfirmation();
 
   // Check if user needs to complete subscription step
   useEffect(() => {
@@ -52,13 +53,6 @@ const Dashboard = () => {
       return;
     }
   }, [user, profile, navigate]);
-
-  // Show email confirmation modal for new users
-  useEffect(() => {
-    if (user && profile && !(profile as any).email_confirmed && !(profile as any).welcome_bonus_claimed) {
-      setShowEmailConfirm(true);
-    }
-  }, [user, profile]);
 
   if (loading) {
     return (
@@ -624,15 +618,12 @@ const Dashboard = () => {
       </div>
 
       {/* Email Confirmation Modal */}
-      {showEmailConfirm && user?.email && (
+      {shouldShowModal && user?.email && (
         <EmailConfirmationModal
-          isOpen={showEmailConfirm}
-          onClose={() => setShowEmailConfirm(false)}
+          isOpen={shouldShowModal}
+          onClose={hideModal}
           userEmail={user.email}
-          onConfirmationComplete={() => {
-            // Refresh profile data after confirmation
-            window.location.reload();
-          }}
+          onConfirmationComplete={onConfirmationComplete}
         />
       )}
     </div>

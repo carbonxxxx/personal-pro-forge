@@ -16,6 +16,7 @@ interface EmailConfirmationModalProps {
 const EmailConfirmationModal = ({ isOpen, onClose, userEmail, onConfirmationComplete }: EmailConfirmationModalProps) => {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [bonusProcessing, setBonusProcessing] = useState(false);
 
   const handleResendEmail = async () => {
     setLoading(true);
@@ -47,54 +48,73 @@ const EmailConfirmationModal = ({ isOpen, onClose, userEmail, onConfirmationComp
   };
 
   const handleClaimBonus = async () => {
+    if (bonusProcessing) return;
+    
+    setBonusProcessing(true);
     try {
       // الحصول على المستخدم الحالي
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) throw new Error('المستخدم غير موجود');
 
       // التحقق من حالة المستخدم الحالية
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('email_confirmed, welcome_bonus_claimed')
         .eq('user_id', user.id)
         .single();
 
-      // إذا كان المستخدم لم يحصل على المكافأة من قبل
-      if (!profile?.welcome_bonus_claimed) {
+      if (profileError) throw profileError;
+
+      // إذا كان المستخدم لم يحصل على المكافأة من قبل وتم تأكيد البريد
+      if (!profile?.welcome_bonus_claimed && user.email_confirmed_at) {
         // إضافة المكافأة مباشرة للمحفظة
-        const { error } = await supabase.rpc('add_manual_balance', {
+        const { error: bonusError } = await supabase.rpc('add_manual_balance', {
           target_user_id: user.id,
           amount: 5,
           admin_notes: 'مكافأة ترحيب - تأكيد البريد الإلكتروني'
         });
 
-        if (error) throw error;
+        if (bonusError) throw bonusError;
+
+        // تحديث حالة الحصول على المكافأة
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ 
+            email_confirmed: true,
+            welcome_bonus_claimed: true
+          })
+          .eq('user_id', user.id);
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "تهانينا! 🎉",
+          description: "تم إضافة 5 دينار ليبي لمحفظتك كمكافأة ترحيب",
+        });
+      } else if (profile?.welcome_bonus_claimed) {
+        toast({
+          title: "تم بالفعل! ✅",
+          description: "لقد حصلت على مكافأة الترحيب من قبل",
+        });
+      } else if (!user.email_confirmed_at) {
+        toast({
+          title: "تأكيد مطلوب",
+          description: "يرجى تأكيد بريدك الإلكتروني أولاً",
+          variant: "destructive",
+        });
       }
-
-      // تحديث حالة تأكيد البريد الإلكتروني
-      await supabase
-        .from('profiles')
-        .update({ 
-          email_confirmed: true,
-          welcome_bonus_claimed: true
-        })
-        .eq('user_id', user.id);
-
-      toast({
-        title: "تهانينا! 🎉",
-        description: profile?.welcome_bonus_claimed 
-          ? "تم تأكيد بريدك الإلكتروني بنجاح"
-          : "تم إضافة 5 دينار ليبي لمحفظتك كمكافأة ترحيب",
-      });
 
       onConfirmationComplete();
       onClose();
     } catch (error: any) {
+      console.error('خطأ في معالجة المكافأة:', error);
       toast({
-        title: "خطأ في إضافة المكافأة",
+        title: "خطأ في معالجة المكافأة",
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setBonusProcessing(false);
     }
   };
 
@@ -179,9 +199,10 @@ const EmailConfirmationModal = ({ isOpen, onClose, userEmail, onConfirmationComp
             {emailSent && (
               <Button
                 onClick={handleClaimBonus}
+                disabled={bonusProcessing}
                 className="flex-1 bg-gradient-to-r from-success to-primary hover:from-primary hover:to-success text-white rounded-xl"
               >
-                تأكيد الحصول على المكافأة
+                {bonusProcessing ? "جاري المعالجة..." : "تأكيد الحصول على المكافأة"}
               </Button>
             )}
           </div>
