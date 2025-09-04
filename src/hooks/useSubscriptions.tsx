@@ -98,23 +98,23 @@ export const useSubscriptions = () => {
       const plan = plans.find(p => p.id === planId);
       if (!plan) throw new Error('Plan not found');
 
-      // If paying with wallet, handle wallet deduction
+      // If paying with wallet, handle wallet deduction through subscription transaction
       if (paymentMethod === 'wallet' && plan.price > 0) {
-        // Create withdrawal transaction using cash type for internal wallet payment
-        const { error: withdrawalError } = await supabase
+        // Create subscription transaction which will automatically deduct from wallet
+        const { error: subscriptionError } = await supabase
           .from('wallet_transactions')
           .insert({
             user_id: user.id,
-            transaction_type: 'withdrawal',
+            transaction_type: 'subscription',
             amount: plan.price,
             currency: 'LYD',
-            payment_method: 'cash', // Use cash as closest match for internal wallet
+            payment_method: 'cash',
             status: 'approved',
             reference_number: `SUBSCRIPTION_${Date.now()}`,
             admin_notes: `اشتراك في خطة ${plan.name} - دفع من المحفظة`
           });
 
-        if (withdrawalError) throw withdrawalError;
+        if (subscriptionError) throw subscriptionError;
       }
 
       // Deactivate any existing active subscription
@@ -170,7 +170,9 @@ export const useSubscriptions = () => {
         .update({ subscription_step_completed: true })
         .eq('user_id', user.id);
       
+      // Fetch the updated subscription with plan data
       await fetchUserSubscription();
+      await fetchPlans(); // Also refresh plans to ensure we have the latest data
       return data;
     } finally {
       setLoading(false);

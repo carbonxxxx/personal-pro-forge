@@ -21,7 +21,7 @@ interface Profile {
 
 interface WalletTransaction {
   id: string;
-  transaction_type: 'deposit' | 'withdrawal' | 'referral_bonus' | 'commission';
+  transaction_type: 'deposit' | 'withdrawal' | 'referral_bonus' | 'commission' | 'subscription';
   amount: number;
   currency: string;
   payment_method?: 'libyana' | 'madar' | 'bank' | 'binance' | 'cash';

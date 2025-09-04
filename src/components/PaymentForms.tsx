@@ -260,6 +260,8 @@ export const TransactionsList = () => {
         return <DollarSign className="w-4 h-4 text-blue-500" />;
       case 'commission':
         return <CreditCard className="w-4 h-4 text-purple-500" />;
+      case 'subscription':
+        return <CreditCard className="w-4 h-4 text-indigo-500" />;
       default:
         return <DollarSign className="w-4 h-4 text-muted-foreground" />;
     }
@@ -312,7 +314,7 @@ export const TransactionsList = () => {
                     ? 'text-success' 
                     : 'text-orange-500'
                 }`}>
-                  {transaction.transaction_type === 'withdrawal' ? '-' : '+'}
+                  {transaction.transaction_type === 'withdrawal' || transaction.transaction_type === 'subscription' ? '-' : '+'}
                   {transaction.amount} د.ل
                 </div>
               </div>

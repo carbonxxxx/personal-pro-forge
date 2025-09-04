@@ -640,6 +640,7 @@ export type Database = {
         | "withdrawal"
         | "referral_bonus"
         | "commission"
+        | "subscription"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -775,6 +776,7 @@ export const Constants = {
         "withdrawal",
         "referral_bonus",
         "commission",
+        "subscription",
       ],
     },
   },

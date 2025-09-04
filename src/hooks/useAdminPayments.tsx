@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 interface WalletTransaction {
   id: string;
   user_id: string;
-  transaction_type: 'deposit' | 'withdrawal' | 'referral_bonus' | 'commission';
+  transaction_type: 'deposit' | 'withdrawal' | 'referral_bonus' | 'commission' | 'subscription';
   amount: number;
   currency: string;
   payment_method: string | null;
@@ -111,7 +111,8 @@ export const useAdminPayments = () => {
       'deposit': 'إيداع',
       'withdrawal': 'سحب',
       'referral_bonus': 'مكافأة إحالة',
-      'commission': 'عمولة'
+      'commission': 'عمولة',
+      'subscription': 'اشتراك'
     };
     return typeTexts[type] || type;
   };
