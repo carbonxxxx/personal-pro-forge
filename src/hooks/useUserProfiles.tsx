@@ -64,10 +64,25 @@ export const useUserProfiles = () => {
   };
 
   const canCreateProfile = () => {
-    if (!currentPlan) return false;
+    if (!currentPlan) {
+      return {
+        canCreate: false,
+        currentCount: profiles?.length || 0,
+        maxAllowed: 1,
+        isAtLimit: true
+      };
+    }
     
     const profileCount = profiles?.length || 0;
-    return profileCount < currentPlan.max_profiles;
+    const maxProfiles = currentPlan.max_profiles;
+    const canCreate = profileCount < maxProfiles;
+    
+    return {
+      canCreate,
+      currentCount: profileCount,
+      maxAllowed: maxProfiles,
+      isAtLimit: profileCount >= maxProfiles
+    };
   };
 
   const canAccessTemplate = (templateTier: string) => {
@@ -84,8 +99,9 @@ export const useUserProfiles = () => {
     if (!user) throw new Error('User not authenticated');
 
     // التحقق من قدرة المستخدم على إنشاء ملف جديد
-    if (!canCreateProfile()) {
-      throw new Error(`تجاوزت العدد المسموح من الملفات الشخصية (${currentPlan?.max_profiles || 1}). يرجى ترقية اشتراكك.`);
+    const profileCheck = canCreateProfile();
+    if (!profileCheck.canCreate) {
+      throw new Error(`تجاوزت العدد المسموح من الملفات الشخصية (${profileCheck.maxAllowed}). يرجى ترقية اشتراكك.`);
     }
 
     // Check if custom URL is available

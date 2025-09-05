@@ -24,12 +24,15 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { useUserProfiles } from "@/hooks/useUserProfiles";
 import { useTemplates } from "@/hooks/useTemplates";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { toast } from "sonner";
+import SubscriptionLimitModal from "@/components/SubscriptionLimitModal";
 
 const CreateProfile = () => {
   const navigate = useNavigate();
   const { allTemplates, loading: templatesLoading } = useTemplates();
-  const { createProfile, loading: creatingProfile } = useUserProfiles();
+  const { createProfile, loading: creatingProfile, canCreateProfile } = useUserProfiles();
+  const { canAccessTemplate } = useSubscriptions();
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [profileData, setProfileData] = useState({
     name: "",
@@ -54,6 +57,8 @@ const CreateProfile = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [newSkill, setNewSkill] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitModalType, setLimitModalType] = useState<'profiles' | 'templates'>('profiles');
 
   const handleSave = async () => {
     if (!selectedTemplate) {
@@ -63,6 +68,14 @@ const CreateProfile = () => {
 
     if (!profileData.name || !profileData.title) {
       toast.error("يرجى ملء الحقول المطلوبة");
+      return;
+    }
+
+    // Check profile creation limit
+    const profileCheck = canCreateProfile();
+    if (!profileCheck.canCreate) {
+      setLimitModalType('profiles');
+      setShowLimitModal(true);
       return;
     }
 
@@ -221,9 +234,18 @@ const CreateProfile = () => {
                     className={`p-6 rounded-2xl cursor-pointer transition-all duration-300 hover:scale-105 ${
                       selectedTemplate === template.id 
                         ? 'border-primary shadow-xl ring-2 ring-primary/20' 
-                        : 'border-gray-200 hover:border-primary/30 hover:shadow-lg'
+                        : canAccessTemplate(template.tier)
+                        ? 'border-gray-200 hover:border-primary/30 hover:shadow-lg'
+                        : 'border-muted bg-muted/20 cursor-not-allowed opacity-50'
                     }`}
-                    onClick={() => setSelectedTemplate(template.id)}
+                    onClick={() => {
+                      if (!canAccessTemplate(template.tier)) {
+                        setLimitModalType('templates');
+                        setShowLimitModal(true);
+                        return;
+                      }
+                      setSelectedTemplate(template.id);
+                    }}
                   >
                     {/* Template Preview */}
                     <div className={`w-full h-32 bg-gradient-to-br ${template.gradient_colors || 'from-gray-400 to-gray-600'} rounded-xl mb-4 flex items-center justify-center relative overflow-hidden`}>
@@ -249,10 +271,24 @@ const CreateProfile = () => {
                     </div>
 
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-bold arabic-heading">{template.name}</h3>
-                      {getTierBadge(template.tier)}
+                      <h3 className={`font-bold arabic-heading ${!canAccessTemplate(template.tier) ? 'text-muted-foreground' : ''}`}>
+                        {template.name}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        {getTierBadge(template.tier)}
+                        {!canAccessTemplate(template.tier) && (
+                          <Crown className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground arabic-body">{template.description}</p>
+                    <p className="text-sm text-muted-foreground arabic-body">
+                      {template.description}
+                      {!canAccessTemplate(template.tier) && (
+                        <span className="block mt-1 text-xs text-primary">
+                          يتطلب ترقية الباقة
+                        </span>
+                      )}
+                    </p>
                   </Card>
                 ))}
               </div>
@@ -573,6 +609,16 @@ const CreateProfile = () => {
           )}
         </div>
       </div>
+
+      <SubscriptionLimitModal
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        limitType={limitModalType}
+        currentLimit={limitModalType === 'profiles' ? canCreateProfile().maxAllowed : 0}
+        requiredTier={limitModalType === 'templates' ? 
+          allTemplates.find(t => t.id === selectedTemplate)?.tier : undefined
+        }
+      />
     </div>
   );
 };

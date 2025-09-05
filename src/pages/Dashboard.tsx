@@ -34,14 +34,17 @@ import { useEmailConfirmation } from "@/hooks/useEmailConfirmation";
 import SubscriptionPlans from "@/components/SubscriptionPlans";
 import SubscriptionManagement from "@/components/SubscriptionManagement";
 import EmailConfirmationModal from "@/components/EmailConfirmationModal";
+import SubscriptionLimitModal from "@/components/SubscriptionLimitModal";
 import { PaymentForm, TransactionsList } from "@/components/PaymentForms";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitModalType, setLimitModalType] = useState<'profiles' | 'templates'>('profiles');
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile, transactions, referralEarnings, stats, loading } = useProfile();
-  const { profiles, loading: profilesLoading } = useUserProfiles();
+  const { profiles, loading: profilesLoading, canCreateProfile } = useUserProfiles();
   const { currentPlan } = useSubscriptions();
   const { transactions: paymentTransactions } = usePayments();
   const { shouldShowModal, hideModal, onConfirmationComplete } = useEmailConfirmation();
@@ -194,15 +197,22 @@ const Dashboard = () => {
                     إليك نظرة عامة على أداء ملفاتك الشخصية وأرباحك
                   </p>
               <div className="flex gap-2">
-                <Link to="/create-profile">
-                  <Button 
-                    className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                    disabled={profiles.length >= ((currentPlan?.max_profiles) || 1)}
-                  >
-                    <Plus className="w-5 h-5 ml-2" />
-                    إنشاء ملف جديد
-                  </Button>
-                </Link>
+                <Button 
+                  className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                  disabled={!canCreateProfile().canCreate}
+                  onClick={() => {
+                    const profileCheck = canCreateProfile();
+                    if (!profileCheck.canCreate) {
+                      setLimitModalType('profiles');
+                      setShowLimitModal(true);
+                    } else {
+                      navigate('/create-profile');
+                    }
+                  }}
+                >
+                  <Plus className="w-5 h-5 ml-2" />
+                  إنشاء ملف جديد
+                </Button>
                     {profile && (
                       <div className="flex items-center gap-2 px-4 py-2 bg-white/80 rounded-xl border">
                         <span className="text-sm text-muted-foreground arabic-body">كود الإحالة:</span>
@@ -311,20 +321,50 @@ const Dashboard = () => {
 
             {activeTab === "profiles" && (
               <>
-                {/* Profiles Header */}
+                {/* Profile limit warning */}
+                {canCreateProfile().isAtLimit && (
+                  <div className="bg-gradient-to-r from-warning/10 to-warning/5 border border-warning/20 rounded-xl p-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <Crown className="w-5 h-5 text-warning" />
+                      <div>
+                        <h4 className="font-medium arabic-heading">وصلت للحد الأقصى من الملفات</h4>
+                        <p className="text-sm text-muted-foreground arabic-body">
+                          لديك {canCreateProfile().currentCount} من {canCreateProfile().maxAllowed} ملف. قم بترقية باقتك لإنشاء المزيد.
+                        </p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        onClick={() => setActiveTab('subscriptions')}
+                        className="bg-warning text-white hover:bg-warning/90"
+                      >
+                        ترقية الباقة
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Profiles Grid */}
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-bold arabic-heading">ملفاتي الشخصية</h2>
                     <p className="text-muted-foreground arabic-body">إدارة وتحرير ملفاتك الاحترافية</p>
                   </div>
-                  <Link to="/create-profile">
-                    <Button className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                      disabled={profiles.length >= ((currentPlan?.max_profiles) || 1)}
-                    >
-                      <Plus className="w-5 h-5 ml-2" />
-                      إنشاء ملف جديد
-                    </Button>
-                  </Link>
+                  <Button 
+                    className="bg-gradient-to-r from-primary to-premium hover:from-premium hover:to-primary rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                    disabled={!canCreateProfile().canCreate}
+                    onClick={() => {
+                      const profileCheck = canCreateProfile();
+                      if (!profileCheck.canCreate) {
+                        setLimitModalType('profiles');
+                        setShowLimitModal(true);
+                      } else {
+                        navigate('/create-profile');
+                      }
+                    }}
+                  >
+                    <Plus className="w-5 h-5 ml-2" />
+                    إنشاء ملف جديد
+                  </Button>
                 </div>
 
                 {/* Profiles Grid */}
@@ -616,6 +656,13 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      <SubscriptionLimitModal
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        limitType={limitModalType}
+        currentLimit={canCreateProfile().maxAllowed}
+      />
 
       {/* Email Confirmation Modal */}
       {shouldShowModal && user?.email && (

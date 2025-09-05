@@ -156,7 +156,9 @@ const TemplateGallery = () => {
 
                 <Button 
                   className={`w-full rounded-xl font-medium transition-all duration-300 hover:scale-105 ${
-                    template.tier === 'super' 
+                    !canAccessTemplate(template.tier)
+                      ? 'opacity-50 cursor-not-allowed bg-muted text-muted-foreground'
+                      : template.tier === 'super' 
                       ? 'bg-gradient-to-r from-super to-pink-600 text-white shadow-lg hover:shadow-xl animate-glow' 
                       : template.tier === 'business'
                       ? 'bg-gradient-to-r from-business to-blue-600 text-white shadow-lg hover:shadow-xl'
@@ -164,8 +166,13 @@ const TemplateGallery = () => {
                       ? 'bg-gradient-to-r from-premium to-purple-600 text-white shadow-lg hover:shadow-xl'
                       : 'border-2 border-primary/20 hover:border-primary/40 bg-white hover:bg-primary/5'
                   }`}
+                  disabled={!canAccessTemplate(template.tier)}
+                  onClick={() => handleTemplateAction(template)}
                 >
-                  {template.tier === 'free' ? 'استخدام مجاناً' : 'معاينة وتفعيل'}
+                  {!canAccessTemplate(template.tier) 
+                    ? 'يتطلب ترقية الباقة'
+                    : template.tier === 'free' ? 'استخدام مجاناً' : 'معاينة وتفعيل'
+                  }
                 </Button>
               </div>
             </Card>
