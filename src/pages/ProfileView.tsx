@@ -295,6 +295,82 @@ const ProfileView = () => {
             </div>
           </Card>
 
+          {/* Galleries */}
+          {profileData.galleries && profileData.galleries.length > 0 && (
+            <Card className="p-6 rounded-2xl border-gray-200 shadow-lg mb-8">
+              <h2 className="text-2xl font-bold mb-6 arabic-heading">معارض الصور</h2>
+              {profileData.galleries.map((gallery, galleryIndex) => (
+                <div key={galleryIndex} className="mb-8">
+                  <h3 className="text-xl font-bold mb-4 arabic-heading">{gallery.title}</h3>
+                  {gallery.description && (
+                    <p className="text-muted-foreground mb-4 arabic-body">{gallery.description}</p>
+                  )}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {gallery.images.map((image, imageIndex) => (
+                      <div key={imageIndex} className="aspect-square bg-muted rounded-lg overflow-hidden group cursor-pointer">
+                        <img
+                          src={image.url}
+                          alt={image.title || `صورة ${imageIndex + 1}`}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23f3f4f6"/><text x="100" y="100" text-anchor="middle" dy="0.3em" font-family="Arial" font-size="14" fill="%236b7280">صورة غير متاحة</text></svg>';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </Card>
+          )}
+
+          {/* Products */}
+          {profileData.products && profileData.products.length > 0 && (
+            <Card className="p-6 rounded-2xl border-gray-200 shadow-lg mb-8">
+              <h2 className="text-2xl font-bold mb-6 arabic-heading">المنتجات والخدمات</h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {profileData.products.map((product, index) => (
+                  <Card key={index} className="p-4 rounded-xl border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                    {product.images && product.images.length > 0 && (
+                      <div className="w-full h-40 bg-muted rounded-lg mb-4 overflow-hidden">
+                        <img
+                          src={product.images[0]}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23f3f4f6"/><text x="100" y="100" text-anchor="middle" dy="0.3em" font-family="Arial" font-size="14" fill="%236b7280">صورة غير متاحة</text></svg>';
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-bold mb-1 arabic-heading">{product.name}</h3>
+                        {product.category && (
+                          <Badge className="bg-muted text-muted-foreground text-xs mb-2">
+                            {product.category}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground arabic-body line-clamp-3">
+                        {product.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-lg text-primary">
+                          {product.price} {product.currency}
+                        </span>
+                        <Button variant="outline" size="sm" className="rounded-lg arabic-body">
+                          <MessageCircle className="w-4 h-4 ml-2" />
+                          استفسار
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* Portfolio */}
           <Card className="p-6 rounded-2xl border-gray-200 shadow-lg mb-8">
             <h2 className="text-2xl font-bold mb-6 arabic-heading">معرض الأعمال</h2>

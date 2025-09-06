@@ -33,6 +33,25 @@ interface ProfileData {
   skills: string[];
   portfolio: any[];
   services: any[];
+  galleries?: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    images: Array<{
+      url: string;
+      title?: string;
+      description?: string;
+    }>;
+  }>;
+  products?: Array<{
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    currency: string;
+    images: string[];
+    category?: string;
+  }>;
 }
 
 export const useUserProfiles = () => {

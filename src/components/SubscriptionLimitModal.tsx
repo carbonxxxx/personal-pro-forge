@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 interface SubscriptionLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  limitType: 'profiles' | 'templates';
+  limitType: 'profiles' | 'templates' | 'galleries' | 'products';
   currentLimit: number;
   requiredTier?: string;
 }
@@ -33,6 +33,10 @@ const SubscriptionLimitModal = ({
         return <Crown className="w-12 h-12 text-primary" />;
       case 'templates':
         return <Sparkles className="w-12 h-12 text-premium" />;
+      case 'galleries':
+        return <Building2 className="w-12 h-12 text-business" />;
+      case 'products':
+        return <Zap className="w-12 h-12 text-super" />;
       default:
         return <Zap className="w-12 h-12 text-business" />;
     }
@@ -44,6 +48,10 @@ const SubscriptionLimitModal = ({
         return 'وصلت للحد الأقصى من الملفات';
       case 'templates':
         return 'قالب غير متاح في باقتك';
+      case 'galleries':
+        return 'وصلت للحد الأقصى من المعارض';
+      case 'products':
+        return 'وصلت للحد الأقصى من المنتجات';
       default:
         return 'ميزة غير متاحة';
     }
@@ -55,6 +63,10 @@ const SubscriptionLimitModal = ({
         return `يمكنك إنشاء ${currentLimit} ملف${currentLimit > 1 ? 'ات' : ''} فقط في باقتك الحالية. قم بترقية باقتك للحصول على المزيد من الملفات.`;
       case 'templates':
         return `هذا القالب متاح فقط للباقات ${requiredTier === 'premium' ? 'المميزة' : requiredTier === 'business' ? 'للأعمال' : 'الخارقة'} وما فوق. قم بترقية باقتك للوصول إليه.`;
+      case 'galleries':
+        return `يمكنك إنشاء ${currentLimit} معرض${currentLimit > 1 ? '' : ''} فقط في باقتك الحالية. قم بترقية باقتك للحصول على المزيد من المعارض.`;
+      case 'products':
+        return `يمكنك إضافة ${currentLimit} منتج${currentLimit > 1 ? '' : ''} فقط في باقتك الحالية. قم بترقية باقتك للحصول على المزيد من المنتجات.`;
       default:
         return 'هذه الميزة غير متاحة في باقتك الحالية.';
     }
